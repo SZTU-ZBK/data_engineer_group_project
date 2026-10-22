@@ -11,7 +11,7 @@ import pandas as pd
 import scipy
 from scipy.sparse import load_npz
 
-from src.evaluate import evaluate_ranking
+from src.evaluate import evaluate_ranking, write_comparison
 from src.models.lightfm import (LightFMRecommender, build_item_features,
                                build_logistic_interactions, check_training_backend)
 from src.recommend import file_sha256, load_movie_metadata, recommendation_table
@@ -108,14 +108,6 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
         {"algorithm": "LightFM", "loss": loss, "split": "test", **test_metrics},
     ])
     results.to_csv(table_dir / "lightfm_metrics.csv", index=False)
-    if baseline:
-        reference = pd.DataFrame([
-            {"algorithm": "ItemCF", "split": stage, **baseline[f"{stage}_metrics"]}
-            for stage in ["validation", "test"]
-        ])
-        if not reference.users.tolist() == results.users.tolist():
-            raise ValueError("Evaluation user counts differ from ItemCF.")
-        pd.concat([reference, results], ignore_index=True).to_csv(table_dir / "comparison_metrics.csv", index=False)
     examples = []
     metadata = load_movie_metadata()
     for context in test.loc[test.eligible].sort_values("user_id").head(3).to_dict("records"):
@@ -156,4 +148,5 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
     payload = json.dumps(run, indent=2)
     (model_dir / "run.json").write_text(payload, encoding="utf-8")
     (table_dir / "lightfm_run.json").write_text(payload, encoding="utf-8")
+    write_comparison(table_dir)
     print(results.to_string(index=False), flush=True)

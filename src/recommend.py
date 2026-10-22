@@ -68,8 +68,8 @@ def recommend_for_user(
     """Use the selected saved model and the specified simulated evaluation history."""
     if stage not in ("validation", "test"):
         raise ValueError("Choose validation or test history.")
-    if algorithm not in ("itemcf", "lightfm"):
-        raise ValueError("Choose itemcf or lightfm.")
+    if algorithm not in ("itemcf", "lightfm", "lrurec"):
+        raise ValueError("Choose itemcf, lightfm or lrurec.")
     processed_dir = Path(processed_dir) if processed_dir else PROJECT_ROOT / "data" / "processed"
     model_dir = Path(model_dir) if model_dir else PROJECT_ROOT / "outputs" / "models" / algorithm
     if not (model_dir / "run.json").is_file():
@@ -80,6 +80,8 @@ def recommend_for_user(
         required += ["user_mapping.csv", "genre_features.npz"]
         if run["loss"] == "logistic":
             required.append("explicit_ratings.npz")
+    elif algorithm == "lrurec":
+        required.append("train_sequences.jsonl")
     for name in required:
         if file_sha256(processed_dir / name) != run["input_sha256"][name]:
             raise ValueError(f"Preprocessed file changed: {name}. Rerun the baseline to match the new inputs.")
@@ -89,7 +91,11 @@ def recommend_for_user(
     matches = contexts.loc[contexts["user_id"].eq(user_id)]
     if matches.empty:
         raise ValueError(f"User {user_id} has no {stage} context; choose a user listed in that split.")
-    model = (ItemCF if algorithm == "itemcf" else LightFMRecommender).load(model_dir)
+    if algorithm == "lrurec":
+        from src.models.lrurec import LRURec
+        model = LRURec.load(model_dir)
+    else:
+        model = (ItemCF if algorithm == "itemcf" else LightFMRecommender).load(model_dir)
     if len(movie_ids) != model.n_items_:
         raise ValueError("Movie mapping and saved model have incompatible shapes.")
     return recommendation_table(model, matches.iloc[0], movie_ids, load_movie_metadata(), k)

@@ -12,7 +12,7 @@ import scipy
 from scipy.sparse import load_npz
 
 from src.data import PROJECT_ROOT
-from src.evaluate import evaluate_ranking
+from src.evaluate import evaluate_ranking, write_comparison
 from src.models.item_cf import ItemCF
 from src.recommend import file_sha256, load_movie_metadata, recommendation_table
 
@@ -115,24 +115,48 @@ def run_itemcf(processed_dir, output_dir, neighbors, shrinkages):
     payload = json.dumps(run, ensure_ascii=False, indent=2)
     (model_dir / "run.json").write_text(payload, encoding="utf-8")
     (table_dir / "itemcf_run.json").write_text(payload, encoding="utf-8")
+    write_comparison(table_dir)
     print(results.to_string(index=False), flush=True)
     print(f'Results: {table_dir}\nSaved model: {model_dir}', flush=True)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", choices=["itemcf", "lightfm"], default="itemcf")
+    parser.add_argument("--model", choices=["itemcf", "lightfm", "lrurec"], default="itemcf")
     parser.add_argument("--neighbors", nargs="+", type=int, default=[20, 50, 100])
     parser.add_argument("--shrinkage", nargs="+", type=float, default=[0.0, 10.0, 50.0])
     parser.add_argument("--components", nargs="+", type=int, default=[32, 64])
-    parser.add_argument("--epochs", nargs="+", type=int, default=[10, 20])
+    parser.add_argument("--epochs", nargs="+", type=int, default=[10, 20], help="LightFM epoch checkpoints")
     parser.add_argument("--alpha", nargs="+", type=float, default=[1e-6, 1e-4])
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--loss", choices=["logistic", "warp"], default="logistic")
+    parser.add_argument("--lru-epochs", nargs="+", type=int, default=[1, 3], help="LRURec epoch checkpoints")
+    parser.add_argument("--hidden-size", type=int, default=32)
+    parser.add_argument("--max-length", type=int, default=50)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--num-blocks", type=int, default=2)
+    parser.add_argument("--learning-rate", type=float, default=0.001)
+    parser.add_argument("--weight-decay", type=float, default=0.01)
+    parser.add_argument("--dropout", type=float, default=0.2)
+    parser.add_argument("--device", choices=["cpu", "cuda"], default="cpu")
+    parser.add_argument("--num-threads", type=int, default=2)
     parser.add_argument("--processed-dir", type=type(PROJECT_ROOT), default=PROJECT_ROOT / "data" / "processed")
     parser.add_argument("--output-dir", type=type(PROJECT_ROOT), default=PROJECT_ROOT / "outputs")
     args = parser.parse_args()
-    if args.model == "lightfm":
+    if args.model == "lrurec":
+        try:
+            from src.train_lrurec import run_lrurec
+        except ModuleNotFoundError as error:
+            if error.name != "torch":
+                raise
+            parser.error("LRURec requires PyTorch. Run: python -m pip install torch "
+                         "--index-url https://download.pytorch.org/whl/cpu")
+        run_lrurec(args.processed_dir, args.output_dir, epochs=args.lru_epochs,
+                   hidden_size=args.hidden_size, max_length=args.max_length,
+                   batch_size=args.batch_size, num_blocks=args.num_blocks,
+                   learning_rate=args.learning_rate, weight_decay=args.weight_decay,
+                   dropout=args.dropout, seed=args.seed, device=args.device, num_threads=args.num_threads)
+    elif args.model == "lightfm":
         from src.train_lightfm import run_lightfm
         run_lightfm(args.processed_dir, args.output_dir, args.components, args.epochs,
                     args.alpha, args.seed, loss=args.loss)

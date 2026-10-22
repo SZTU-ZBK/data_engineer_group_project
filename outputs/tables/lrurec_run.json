@@ -1,0 +1,96 @@
+{
+  "algorithm": "LRURec",
+  "reference": "https://arxiv.org/abs/2310.02367",
+  "selected_parameters": {
+    "n_items": 3667,
+    "hidden_size": 32,
+    "num_blocks": 2,
+    "max_length": 50,
+    "dropout": 0.2,
+    "epochs": 3
+  },
+  "epoch_checkpoints": [
+    1,
+    3
+  ],
+  "selection_metric": "NDCG@10 on validation",
+  "tie_break": "Recall@10, then earlier epoch",
+  "random_seed": 42,
+  "device": "cpu",
+  "num_threads": 2,
+  "batch_size": 64,
+  "learning_rate": 0.001,
+  "weight_decay": 0.01,
+  "optimizer": "AdamW",
+  "gradient_clip_norm": 5.0,
+  "loss": "Full-catalog next-item cross entropy; padding excluded from classifier",
+  "training_windows": 12353,
+  "training_targets": 255174,
+  "window_policy": "Nonoverlapping train input chunks; each adjacent next-item transition once",
+  "timestamp_ties": "Equal-timestamp adjacent targets ignored; history tie order is deterministic movie ID",
+  "model_fit_partitions": [
+    "train"
+  ],
+  "refit_on_validation": false,
+  "validation_history": [
+    "train"
+  ],
+  "test_history": [
+    "train",
+    "validation"
+  ],
+  "history_use": "Last 50 known positive movie tokens; recompute sequence state at inference",
+  "candidate_protocol": "Shared full unseen training catalog and eligible users; no sampled evaluation negatives",
+  "k_values": [
+    5,
+    10
+  ],
+  "metric_aggregation": "macro-average over eligible users; warm relevant targets",
+  "implementation": "Complex stable diagonal LRU, 2x state width, residual FFN, tied embeddings; prefix doubling scan",
+  "paper_differences": "Shared temporal 80/10/10 split and positive-only sequences; timestamp-tie masking; compact model/training schedule; project validation selection; not a paper-number replication",
+  "input_sha256": {
+    "config.json": "0393d3289ebc0b1dc048a462441dca2fbd0cf808d6c0504dd7b043677a16e319",
+    "movie_mapping.csv": "4a86f3fcfcf2aa414828df4e2ba58d5b22a7516e73850eb54f989bd5ce68e8fb",
+    "positive_interactions.npz": "ed3350465c78bebbc441244eb8219ba05ce6750b9c5d08bab41b3c68aaec413c",
+    "train_sequences.jsonl": "e080b77e950ef27b1f6621932da8409972ee8ec19c7e5d45e3ae3850c9dedbd1",
+    "validation_contexts.jsonl": "f07216b1bd535676ac7c589ede504839eac240ec844f9e1b01e557c76bd05563",
+    "test_contexts.jsonl": "24901643b816817258213b8d03ad708929ff0f9778934c8a6c3be3b183c765dc"
+  },
+  "validation_metrics": {
+    "users": 5776,
+    "MeanHits@5": 0.41880193905817176,
+    "Precision@5": 0.08376038781163436,
+    "HitRate@5": 0.3093836565096953,
+    "Recall@5": 0.07016757016456564,
+    "NDCG@5": 0.09968789638135009,
+    "CatalogCoverage@5": 0.12980638123806926,
+    "MeanHits@10": 0.7198753462603878,
+    "Precision@10": 0.07198753462603878,
+    "HitRate@10": 0.4316135734072022,
+    "Recall@10": 0.11424576383323566,
+    "NDCG@10": 0.10976482629523145,
+    "CatalogCoverage@10": 0.16662121625306792
+  },
+  "test_metrics": {
+    "users": 5765,
+    "MeanHits@5": 0.37259323503902864,
+    "Precision@5": 0.07451864700780572,
+    "HitRate@5": 0.27580225498699046,
+    "Recall@5": 0.05758828002811896,
+    "NDCG@5": 0.08731840791606849,
+    "CatalogCoverage@5": 0.13853286064903192,
+    "MeanHits@10": 0.6456201214223765,
+    "Precision@10": 0.06456201214223765,
+    "HitRate@10": 0.40121422376409366,
+    "Recall@10": 0.10008854215758406,
+    "NDCG@10": 0.09613980975644482,
+    "CatalogCoverage@10": 0.17971093536951185
+  },
+  "software": {
+    "python": "3.11.17",
+    "numpy": "1.26.4",
+    "pandas": "3.0.6",
+    "torch": "2.14.1+cpu"
+  },
+  "total_seconds": 127.56236119999085
+}

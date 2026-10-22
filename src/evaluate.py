@@ -1,5 +1,8 @@
 """Shared full-catalog ranking, deterministic tie-breaking and ranking metrics."""
 
+import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -76,3 +79,27 @@ def evaluate_ranking(score_fn, contexts: pd.DataFrame, movie_ids, k_values=(5, 1
         aggregate[f"NDCG@{k}"] = float(per_user[f"NDCG@{k}"].mean())
         aggregate[f"CatalogCoverage@{k}"] = len(recommended_catalog[k]) / len(movie_ids)
     return aggregate, per_user
+
+
+def write_comparison(table_dir):
+    """Refresh available models, rejecting results produced from different inputs."""
+    table_dir = Path(table_dir)
+    runs, results = [], []
+    for name, label in [("itemcf", "ItemCF"), ("lightfm", "LightFM"), ("lrurec", "LRURec")]:
+        path = table_dir / f"{name}_run.json"
+        if not path.is_file():
+            continue
+        run = json.loads(path.read_text(encoding="utf-8"))
+        for other in runs:
+            common = run["input_sha256"].keys() & other["input_sha256"].keys()
+            if any(run["input_sha256"][key] != other["input_sha256"][key] for key in common):
+                raise ValueError("Saved model inputs differ. Rerun models before comparing results.")
+            if any(run[f"{stage}_metrics"]["users"] != other[f"{stage}_metrics"]["users"]
+                   for stage in ("validation", "test")):
+                raise ValueError("Saved models use different evaluation cohorts.")
+        runs.append(run)
+        results.extend({"algorithm": label, "loss": run.get("loss", "-"),
+                        "split": stage, **run[f"{stage}_metrics"]}
+                       for stage in ("validation", "test"))
+    if results:
+        pd.DataFrame(results).to_csv(table_dir / "comparison_metrics.csv", index=False)

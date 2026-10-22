@@ -1,6 +1,6 @@
 # MovieLens 1M 电影推荐系统
 
-CS5481 小组项目一。当前已实现数据探索、预处理，以及 ItemCF 和 LightFM 的训练、评估与推荐。
+CS5481 小组项目一。实现数据探索、预处理，以及 ItemCF、LightFM 和 LRURec 的训练、评估与推荐。
 
 ## 环境与运行
 
@@ -43,6 +43,9 @@ src/data.py                         数据读取、质量检查、清洗、时�
 src/features.py                     训练期特征、稀疏矩阵、行为序列与共享评估上下文
 src/models/item_cf.py               正反馈 ItemCF、模型保存与恢复
 src/models/lightfm.py               LightFM 特征编码、向量导出与推荐评分
+src/models/lrurec.py                LRURec 线性递推模型、序列评分与保存恢复
+src/sequences.py                    下一部电影训练窗口与序列补齐
+src/train_lrurec.py                 LRURec 训练、验证选轮数与共享评估
 src/train_lightfm.py                官方 LightFM 训练、验证选参及结果比较
 src/evaluate.py                     共享排名、Precision/Recall/NDCG、命中统计与覆盖率
 src/recommend.py                    电影推荐、标题/类型展示与相似历史解释
@@ -52,6 +55,7 @@ audit_itemcf.py                    原始数据对齐、相似度/评估审计�
 notebooks/01_data_analysis.ipynb     数据概况、探索总览图与预处理
 notebooks/02_itemcf.ipynb            ItemCF 原理、搜索结果、评估及用户推荐演示
 notebooks/03_lightfm.ipynb           LightFM 原理、核心结果与双算法推荐比较
+notebooks/04_lrurec.ipynb            LRURec 原理、核心结果与三算法推荐比较
 outputs/figures/                    Notebook 自动生成的 PNG 图表
 outputs/tables/                     Notebook 自动生成的统计汇总 CSV
 data/processed/                    本地模型输入与配置，不纳入 Git
@@ -227,6 +231,38 @@ WARP 入口检测到时会拒绝运行；logistic 不调用该采样函数，无
 
 算法参考：Maciej Kula. 2015. [Metadata Embeddings for User and Item Cold-start Recommendations](https://arxiv.org/abs/1507.08439)。
 实现依据：[官方 LightFM 文档](https://making.lyst.com/lightfm/docs/lightfm.html)。
+
+## LRURec（WSDM 2024）
+
+在已激活的项目环境中额外安装 CPU 版 PyTorch：
+
+```bash
+python -m pip install -r requirements-lrurec.txt --index-url https://download.pytorch.org/whl/cpu
+python train.py --model lrurec
+python recommend.py --model lrurec --user-id 1 --top-k 5
+```
+
+LRURec 将按时间排列的高分电影 token 输入嵌入层，通过复数对角线性递推、残差前馈层和共享电影嵌入计算推荐分数。
+仅使用训练集生成“历史 → 下一部高分电影”的标签，采用完整训练目录的交叉熵；补齐 token 不参与分类。
+同一时间戳内仍按电影 ID 确定性排列，但相邻同时间戳的预测标签被忽略，避免把这种排列当作真实先后。
+输入切为最长 50 的不重叠片段，每个相邻转移最多作为标签一次；推理取最近 50 部已知高分电影。
+
+默认小配置为隐藏维度 32、两层、dropout 0.2、batch size 64、AdamW（学习率 0.001，weight decay 0.01）、
+随机种子 42、CPU 两线程。在第 1、3 轮检查验证 NDCG@10，选择最优轮数后才评估测试集。
+可先运行 `python train.py --model lrurec --lru-epochs 1` 检查完整流程；
+更多轮数例如 `--lru-epochs 5 10 20` 应根据验证结果决定，不根据测试分数调整。
+训练期间每个验证检查点保存搜索表和当前最佳模型；保存的是推理权重，不含继续训练的优化器状态。
+
+验证与测试沿用共同用户、完整未评分候选和 Precision/Recall/NDCG@5/10；测试历史可包含验证期已知评分，
+模型参数仅由训练集学习。Notebook `04_lrurec.ipynb` 展示选定参数、三算法比较与同一用户的电影标题和类型。
+结果写入 `outputs/tables/lrurec_metrics.csv`、`lrurec_validation_search.csv`、`lrurec_run.json`、
+`lrurec_recommendation_examples.csv`；模型与逐用户指标写入 `outputs/models/lrurec/`。
+任一算法完成训练后都会刷新 `comparison_metrics.csv`，检查已有算法的共同输入校验和及评估人数是否一致。
+
+依据 [LRURec 论文](https://arxiv.org/abs/2310.02367) 与[官方实现](https://github.com/yueqirex/LRURec)独立实现核心结构。
+本项目采用并行前缀倍增计算递推；训练划分、正反馈筛选、时间戳处理、模型大小及选参规则均按项目统一协议调整。
+因此这是课程实验实现，**不作为论文实验数值或运行效率的复现**。
+PyTorch 安装方式参考[官方说明](https://pytorch.org/get-started/locally/)。
 
 ## 数据引用
 

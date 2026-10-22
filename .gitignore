@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+#doc
+Group_Project_Tutorial_Recommender_Systems.pdf
+
 # Distribution / packaging
 .Python
 build/
@@ -218,3 +221,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local MovieLens raw data (download separately from GroupLens)
+/ml-1m/
+/data/ml-1m/

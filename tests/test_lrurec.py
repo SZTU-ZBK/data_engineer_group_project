@@ -10,16 +10,27 @@ import numpy as np
 import pandas as pd
 
 from src.evaluate import evaluate_ranking, write_comparison
-from src.sequences import pad_history, training_windows
+from src.sequences import pad_history, training_windows, validation_windows
 
 HAS_TORCH = importlib.util.find_spec("torch") is not None
 if HAS_TORCH:
     import torch
     from src.models.lrurec import LRURec, parallel_recurrence
-    from src.train_lrurec import evaluate_batched, next_item_loss
+    from src.train_lrurec import evaluate_batched, evaluate_loss, next_item_loss
 
 
 class SequenceTests(unittest.TestCase):
+    def test_validation_labels_exclude_train_and_future_history(self):
+        train = pd.DataFrame({"user_id": [1], "movie_tokens": [[1, 2, 3]], "timestamps": [[1, 2, 3]]})
+        heldout = pd.DataFrame({"user_id": [1], "movie_tokens": [[4, 5, 6]], "timestamps": [[4, 4, 5]]})
+        inputs, targets = validation_windows(train, heldout, 4, 6)
+        np.testing.assert_array_equal(inputs, [[1, 2, 3, 4], [2, 3, 4, 5]])
+        np.testing.assert_array_equal(targets, [[0, 0, 4, 0], [0, 0, 0, 6]])
+        self.assertEqual(train.movie_tokens.iloc[0], [1, 2, 3])
+        for x, y in zip(inputs, targets):
+            for position in np.flatnonzero(y):
+                self.assertNotIn(y[position], x[:position + 1])
+
     def test_windows_cover_train_transitions_and_ignore_timestamp_ties(self):
         sequences = pd.DataFrame({"movie_tokens": [[1, 2, 3, 4, 5, 6], [7]],
                                   "timestamps": [[1, 1, 2, 3, 3, 4], [1]]})
@@ -91,6 +102,19 @@ class LRURecTests(unittest.TestCase):
         torch.testing.assert_close(a[:, :2], b[:, :2])
         padded = model(torch.tensor([[0, 0, 1, 2, 3, 4]]))
         torch.testing.assert_close(a, padded[:, -4:], atol=1e-6, rtol=1e-5)
+
+    def test_validation_loss_averages_targets_without_updating_parameters(self):
+        model = LRURec(6, hidden_size=4, num_blocks=1, max_length=3, dropout=0)
+        inputs = torch.tensor([[1, 2, 3], [2, 3, 4], [1, 3, 5]])
+        targets = torch.tensor([[0, 3, 4], [0, 0, 5], [0, 5, 6]])
+        loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(inputs, targets), batch_size=2)
+        before = {name: p.detach().clone() for name, p in model.named_parameters()}
+        actual = evaluate_loss(model, loader, "cpu")
+        expected = next_item_loss(model, inputs, targets).item()
+        self.assertAlmostEqual(actual, expected, places=5)
+        for name, p in model.named_parameters():
+            torch.testing.assert_close(before[name], p)
+            self.assertIsNone(p.grad)
 
     def test_training_loss_falls_and_ignored_labels_have_no_gradient(self):
         model = LRURec(6, hidden_size=8, num_blocks=1, max_length=3, dropout=0)

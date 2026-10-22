@@ -130,7 +130,9 @@ def main():
     parser.add_argument("--alpha", nargs="+", type=float, default=[1e-6, 1e-4])
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--loss", choices=["logistic", "warp"], default="logistic")
-    parser.add_argument("--lru-epochs", nargs="+", type=int, default=[1, 3], help="LRURec epoch checkpoints")
+    lru_schedule = parser.add_mutually_exclusive_group()
+    lru_schedule.add_argument("--lru-epochs", nargs="+", type=int, default=[1, 3], help="LRURec epoch checkpoints")
+    lru_schedule.add_argument("--max-epochs", type=int, help="LRURec: train this many epochs and validate every epoch")
     parser.add_argument("--hidden-size", type=int, default=32)
     parser.add_argument("--max-length", type=int, default=50)
     parser.add_argument("--batch-size", type=int, default=64)
@@ -143,6 +145,8 @@ def main():
     parser.add_argument("--processed-dir", type=type(PROJECT_ROOT), default=PROJECT_ROOT / "data" / "processed")
     parser.add_argument("--output-dir", type=type(PROJECT_ROOT), default=PROJECT_ROOT / "outputs")
     args = parser.parse_args()
+    if args.max_epochs is not None and args.max_epochs < 1:
+        parser.error("--max-epochs must be positive.")
     if args.model == "lrurec":
         try:
             from src.train_lrurec import run_lrurec
@@ -151,7 +155,8 @@ def main():
                 raise
             parser.error("LRURec requires PyTorch. Run: python -m pip install torch "
                          "--index-url https://download.pytorch.org/whl/cpu")
-        run_lrurec(args.processed_dir, args.output_dir, epochs=args.lru_epochs,
+        checkpoints = list(range(1, args.max_epochs + 1)) if args.max_epochs is not None else args.lru_epochs
+        run_lrurec(args.processed_dir, args.output_dir, epochs=checkpoints,
                    hidden_size=args.hidden_size, max_length=args.max_length,
                    batch_size=args.batch_size, num_blocks=args.num_blocks,
                    learning_rate=args.learning_rate, weight_decay=args.weight_decay,

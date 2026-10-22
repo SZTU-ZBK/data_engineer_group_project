@@ -1,4 +1,4 @@
-"""Train LRURec on train sequences and choose the checkpoint on validation only."""
+"""Train LRURec and choose the checkpoint with the lowest next-item validation loss."""
 
 import json
 import platform
@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from src.evaluate import evaluate_ranking, write_comparison
 from src.models.lrurec import LRURec
 from src.recommend import file_sha256, load_movie_metadata, recommendation_table
-from src.sequences import training_windows
+from src.sequences import training_windows, validation_windows
 
 
 def next_item_loss(model, inputs, targets):
@@ -22,6 +22,20 @@ def next_item_loss(model, inputs, targets):
     hidden = model.encode(inputs)[valid]
     logits = hidden @ model.embedding.weight[1:].T + model.item_bias
     return nn.functional.cross_entropy(logits, targets[valid] - 1)
+
+
+@torch.inference_mode()
+def evaluate_loss(model, loader, device):
+    model.eval()
+    total, count = 0.0, 0
+    for inputs, targets in loader:
+        inputs, targets = inputs.to(device), targets.to(device)
+        n = int(targets.ne(0).sum())
+        total += next_item_loss(model, inputs, targets).item() * n
+        count += n
+    if not count:
+        raise ValueError("Validation loss requires nonempty next-item labels.")
+    return total / count
 
 
 def evaluate_batched(model, contexts, movie_ids, batch_size):
@@ -44,7 +58,7 @@ def run_lrurec(processed_dir, output_dir, epochs=(1, 3), hidden_size=32, max_len
         raise ValueError("Use positive epochs/batch size/threads/rate and nonnegative weight decay.")
     processed_dir, output_dir = processed_dir.resolve(), output_dir.resolve()
     required = ["config.json", "movie_mapping.csv", "positive_interactions.npz",
-                "train_sequences.jsonl", "validation_contexts.jsonl", "test_contexts.jsonl"]
+                "train_sequences.jsonl", "validation.csv", "validation_contexts.jsonl", "test_contexts.jsonl"]
     checksums = {name: file_sha256(processed_dir / name) for name in required}
     config = json.loads((processed_dir / "config.json").read_text(encoding="utf-8"))
     mapping = pd.read_csv(processed_dir / "movie_mapping.csv").sort_values("movie_index")
@@ -63,6 +77,16 @@ def run_lrurec(processed_dir, output_dir, epochs=(1, 3), hidden_size=32, max_len
     sequences = pd.read_json(processed_dir / "train_sequences.jsonl", lines=True)
     inputs, targets = training_windows(sequences, max_length, len(mapping))
     validation = pd.read_json(processed_dir / "validation_contexts.jsonl", lines=True)
+    # Loss uses only warm positive validation events from the shared eligible cohort.
+    heldout = pd.read_csv(processed_dir / "validation.csv")
+    heldout = heldout.loc[heldout.is_relevant.eq(1)
+                          & heldout.user_id.isin(validation.loc[validation.eligible, "user_id"])]
+    heldout = heldout.merge(mapping[["movie_id", "movie_index"]], on="movie_id", how="inner")
+    heldout["movie_tokens"] = heldout.movie_index + 1
+    heldout = (heldout.sort_values(["user_id", "timestamp", "movie_id"])
+               .groupby("user_id", as_index=False)
+               .agg(movie_tokens=("movie_tokens", list), timestamps=("timestamp", list)))
+    val_inputs, val_targets = validation_windows(sequences, heldout, max_length, len(mapping))
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -74,6 +98,9 @@ def run_lrurec(processed_dir, output_dir, epochs=(1, 3), hidden_size=32, max_len
     loader = DataLoader(TensorDataset(torch.from_numpy(inputs), torch.from_numpy(targets)),
                         batch_size=batch_size, shuffle=True, num_workers=0,
                         generator=torch.Generator().manual_seed(seed))
+    validation_loader = DataLoader(TensorDataset(torch.from_numpy(val_inputs), torch.from_numpy(val_targets)),
+                                   batch_size=batch_size, shuffle=False, num_workers=0,
+                                   generator=torch.Generator().manual_seed(seed + 1))
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     table_dir.mkdir(parents=True, exist_ok=True)
     started, trials, best_key = perf_counter(), [], None
@@ -97,18 +124,21 @@ def run_lrurec(processed_dir, output_dir, epochs=(1, 3), hidden_size=32, max_len
         print(f"Epoch {epoch}: train loss={total_loss / count:.4f}", flush=True)
         if epoch not in epochs:
             continue
+        validation_loss = evaluate_loss(model, validation_loader, device)
+        if not np.isfinite(validation_loss):
+            raise ValueError("Nonfinite validation loss; no checkpoint was accepted.")
         metrics, _ = evaluate_batched(model, validation, movie_ids, batch_size)
         trial = {"epochs": epoch, "train_loss": total_loss / count,
-                 "elapsed_seconds": perf_counter() - started, **metrics}
+                 "validation_loss": validation_loss, "elapsed_seconds": perf_counter() - started, **metrics}
         trials.append(trial)
-        key = (metrics["NDCG@10"], metrics["Recall@10"], -epoch)
+        key = (-validation_loss, -epoch)
         if best_key is None or key > best_key:
             best_key, selected = key, trial.copy()
             model.save(model_dir / "search_best")
             (model_dir / "search_best" / "validation.json").write_text(
                 json.dumps(selected, indent=2), encoding="utf-8")
         pd.DataFrame(trials).to_csv(table_dir / "lrurec_validation_search.csv", index=False)
-        print(f'Validation: NDCG@10={metrics["NDCG@10"]:.6f}, '
+        print(f'Validation: loss={validation_loss:.6f}, NDCG@10={metrics["NDCG@10"]:.6f}, '
               f'Precision@10={metrics["Precision@10"]:.6f}', flush=True)
 
     # Fix the winner before loading test labels. Never refit on validation.
@@ -133,13 +163,18 @@ def run_lrurec(processed_dir, output_dir, epochs=(1, 3), hidden_size=32, max_len
     run = {
         "algorithm": "LRURec", "reference": "https://arxiv.org/abs/2310.02367",
         "selected_parameters": {**model.config, "epochs": int(selected["epochs"])},
-        "epoch_checkpoints": epochs, "selection_metric": "NDCG@10 on validation",
-        "tie_break": "Recall@10, then earlier epoch", "random_seed": seed,
+        "epoch_checkpoints": epochs, "selection_metric": "minimum next-item validation cross entropy",
+        "selected_validation_loss": selected["validation_loss"],
+        "tie_break": "earlier epoch", "random_seed": seed,
         "device": device, "num_threads": num_threads, "batch_size": batch_size,
         "learning_rate": learning_rate, "weight_decay": weight_decay,
         "optimizer": "AdamW", "gradient_clip_norm": 5.0,
         "loss": "Full-catalog next-item cross entropy; padding excluded from classifier",
         "training_windows": len(inputs), "training_targets": int((targets > 0).sum()),
+        "validation_loss_targets": int((val_targets > 0).sum()),
+        "validation_loss_protocol": "Target-average full-catalog cross entropy on strictly later warm "
+                                    "validation positives of eligible users; teacher-forced prior train/validation "
+                                    "history only; reserve half-window context when available; no parameter updates",
         "window_policy": "Nonoverlapping train input chunks; each adjacent next-item transition once",
         "timestamp_ties": "Equal-timestamp adjacent targets ignored; history tie order is deterministic movie ID",
         "model_fit_partitions": ["train"], "refit_on_validation": False,

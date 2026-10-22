@@ -1,4 +1,4 @@
-"""Tune ItemCF on validation, then evaluate the selected configuration on test."""
+"""Tune a recommender on validation, then evaluate its selected configuration on test."""
 
 import argparse
 import itertools
@@ -121,13 +121,23 @@ def run_itemcf(processed_dir, output_dir, neighbors, shrinkages):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", choices=["itemcf"], default="itemcf")
+    parser.add_argument("--model", choices=["itemcf", "lightfm"], default="itemcf")
     parser.add_argument("--neighbors", nargs="+", type=int, default=[20, 50, 100])
     parser.add_argument("--shrinkage", nargs="+", type=float, default=[0.0, 10.0, 50.0])
+    parser.add_argument("--components", nargs="+", type=int, default=[32, 64])
+    parser.add_argument("--epochs", nargs="+", type=int, default=[10, 20])
+    parser.add_argument("--alpha", nargs="+", type=float, default=[1e-6, 1e-4])
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--loss", choices=["logistic", "warp"], default="logistic")
     parser.add_argument("--processed-dir", type=type(PROJECT_ROOT), default=PROJECT_ROOT / "data" / "processed")
     parser.add_argument("--output-dir", type=type(PROJECT_ROOT), default=PROJECT_ROOT / "outputs")
     args = parser.parse_args()
-    run_itemcf(args.processed_dir, args.output_dir, args.neighbors, args.shrinkage)
+    if args.model == "lightfm":
+        from src.train_lightfm import run_lightfm
+        run_lightfm(args.processed_dir, args.output_dir, args.components, args.epochs,
+                    args.alpha, args.seed, loss=args.loss)
+    else:
+        run_itemcf(args.processed_dir, args.output_dir, args.neighbors, args.shrinkage)
 
 
 if __name__ == "__main__":

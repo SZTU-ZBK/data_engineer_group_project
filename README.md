@@ -1,10 +1,18 @@
 # MovieLens 1M 电影推荐系统
 
-CS5481 小组项目一。当前已完成数据探索、预处理，以及第一种算法 ItemCF 的训练、验证调参、评估和推荐展示。
+CS5481 小组项目一。当前已实现数据探索、预处理，以及 ItemCF 和 LightFM 的训练、评估与推荐。
 
 ## 环境与运行
 
-使用 Python 3.10 或更高版本，在项目根目录执行：
+可使用预编译的 Conda 环境，在项目根目录执行（使用独立名称避免与已有环境混用）：
+
+```bash
+conda env create -n movie-lightfm -f environment.yml
+conda activate movie-lightfm
+python -m jupyterlab
+```
+
+其他环境可使用 Python 3.10 或更高版本安装 `requirements.txt`（LightFM 从源码安装需要 C 编译器）：
 
 ```bash
 python -m pip install -r requirements.txt
@@ -34,6 +42,8 @@ python -m jupyterlab
 src/data.py                         数据读取、质量检查、清洗、时间划分与相关性标签
 src/features.py                     训练期特征、稀疏矩阵、行为序列与共享评估上下文
 src/models/item_cf.py               正反馈 ItemCF、模型保存与恢复
+src/models/lightfm.py               LightFM 特征编码、向量导出与推荐评分
+src/train_lightfm.py                官方 LightFM 训练、验证选参及结果比较
 src/evaluate.py                     共享排名、Precision/Recall/NDCG、命中统计与覆盖率
 src/recommend.py                    电影推荐、标题/类型展示与相似历史解释
 train.py                           验证集调参、选定模型的最终测试与结果导出
@@ -41,12 +51,14 @@ recommend.py                       按用户 ID 输出推荐的命令行入口
 audit_itemcf.py                    原始数据对齐、相似度/评估审计及推荐观测状态诊断
 notebooks/01_data_analysis.ipynb     数据概况、探索总览图与预处理
 notebooks/02_itemcf.ipynb            ItemCF 原理、搜索结果、评估及用户推荐演示
+notebooks/03_lightfm.ipynb           LightFM 原理、核心结果与双算法推荐比较
 outputs/figures/                    Notebook 自动生成的 PNG 图表
 outputs/tables/                     Notebook 自动生成的统计汇总 CSV
 data/processed/                    本地模型输入与配置，不纳入 Git
 tests/test_preprocessing.py         时间边界、留出数据隔离和候选过滤测试
 tests/test_itemcf.py                相似度手算、排名指标、推荐过滤和保存恢复测试
 requirements.txt                    数据阶段的依赖
+environment.yml                     Conda 环境依赖
 ```
 
 读取示例（在项目根目录运行）：
@@ -180,6 +192,41 @@ Top-5/10 是本项目的实验设置，课程硬性要求为推荐至少 5 部�
 算法参考：Badrul Sarwar, George Karypis, Joseph Konstan, and John Riedl. 2001.
 [*Item-based Collaborative Filtering Recommendation Algorithms*](https://ra.ethz.ch/cdstore/www10/papers/519/sdm2.html).
 本项目采用二值正反馈、Top-N 排名及可选收缩的具体实现，实验使用本项目的统一划分协议。
+
+## LightFM
+
+默认使用官方 `lightfm==1.17` 的 **logistic 损失**，避免本机 Windows WARP/BPR 负采样扩展的崩溃。
+训练标签只根据训练评分构造：**≥4 分为 +1、1–2 分为 -1，3 分和未评分项不参与训练**。
+不采样未评分项作为负例，不读取留出标签；评估正例仍按原规则定义为评分 ≥4。
+用户使用 ID 特征，电影比较“仅 ID”和“ID＋类型”两种配置；类型特征与电影身份特征拼接后按行 L1 归一化。
+两种配置和不同损失均属于同一种 LightFM 算法，但训练目标不同，结果中记录实际使用的损失和标签规则。
+
+```bash
+python train.py --model lightfm --loss logistic
+python recommend.py --model lightfm --user-id 1 --top-k 5
+```
+
+默认比较维度 `[32, 64]`、正则化 `[1e-6, 1e-4]`、训练轮数检查点 `[10, 20]`，共 16 个验证配置。
+固定随机种子 42、单线程，继续使用验证 NDCG@10 选参，选定后评估测试集；不使用测试结果调参。
+可用 `--components 32 --epochs 5 10 --alpha 1e-6 --seed 42` 缩小为 4 个验证配置，先确认完整流程。
+当前保存结果来自这个小网格，并非默认 16 配置搜索的完整结果。每个检查点的指标即时写入
+`lightfm_search_progress.csv`，当前最佳向量另存到 `outputs/models/lightfm/search_best/`，以保留中断前的进展。
+
+候选、评估用户及指标与 ItemCF 完全复用。LightFM 的用户向量只由训练集学习，测试时验证历史用于过滤已评分电影，不更新用户向量。
+打开 `notebooks/03_lightfm.ipynb` 查看选定配置、算法指标比较，并修改用户 ID 比较两种算法推荐的电影标题与类型。
+
+结果位于 `outputs/tables/lightfm_metrics.csv`、`lightfm_validation_search.csv`、`lightfm_run.json`、
+`lightfm_recommendation_examples.csv` 和 `comparison_metrics.csv`。
+选定模型的向量及逐用户测试结果保存到 `outputs/models/lightfm/`（不纳入 Git）。导出的向量用于推理，不包含继续训练所需的优化器状态。
+
+可选 `--loss warp` 使用正反馈与内部负采样训练。当前 Windows 包存在可能导致负电影索引的随机数转换代码，
+WARP 入口检测到时会拒绝运行；logistic 不调用该采样函数，无需重编译。
+若需要在本机使用 WARP，可安装 [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+中的“使用 C++ 的桌面开发”，再执行 `python repair_lightfm_windows.py`。
+该脚本只修正随机数转换，隔离测试通过后才备份并替换原扩展；这条重编译路径尚未在本机验证。
+
+算法参考：Maciej Kula. 2015. [Metadata Embeddings for User and Item Cold-start Recommendations](https://arxiv.org/abs/1507.08439)。
+实现依据：[官方 LightFM 文档](https://making.lyst.com/lightfm/docs/lightfm.html)。
 
 ## 数据引用
 

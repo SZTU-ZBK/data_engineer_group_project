@@ -1,0 +1,106 @@
+{
+  "algorithm": "LightFM",
+  "loss": "logistic",
+  "selected_parameters": {
+    "loss": "logistic",
+    "item_features": "identity",
+    "no_components": 32,
+    "alpha": 1e-06,
+    "epochs": 10
+  },
+  "grid": {
+    "no_components": [
+      32
+    ],
+    "alpha": [
+      1e-06
+    ],
+    "epochs": [
+      5,
+      10
+    ],
+    "item_features": [
+      "identity",
+      "identity+genres"
+    ]
+  },
+  "selection_metric": "NDCG@10 on validation",
+  "tie_break": "Recall@10, smaller dimensions, earlier epochs, smaller alpha, identity features",
+  "random_seed": 42,
+  "num_threads": 1,
+  "learning_rate": 0.05,
+  "max_sampled": null,
+  "feature_encoding": "User identity; item identity optionally concatenated with genres, row L1 normalized",
+  "training_feedback": "Train rating >= relevance_threshold: +1; rating 1/2: -1; rating 3 and unknown omitted",
+  "training_positive_count": 470016,
+  "training_negative_count": 124073,
+  "negative_sampling": "None: only observed training ratings; no validation/test labels consulted",
+  "model_fit_partitions": [
+    "train"
+  ],
+  "refit_on_validation": false,
+  "validation_history": [
+    "train"
+  ],
+  "test_history": [
+    "train",
+    "validation"
+  ],
+  "history_use": "Fixed training user vectors; stage history filters candidates, no online vector update",
+  "candidate_protocol": "Shared full unseen training catalog and eligible users; no sampled evaluation negatives",
+  "k_values": [
+    5,
+    10
+  ],
+  "metric_aggregation": "macro-average over eligible users; warm relevant targets",
+  "early_stopping": "Choose among requested epoch checkpoints by validation NDCG@10",
+  "input_sha256": {
+    "config.json": "0393d3289ebc0b1dc048a462441dca2fbd0cf808d6c0504dd7b043677a16e319",
+    "user_mapping.csv": "dfd094e3a3f9741cbbaee43fb2042315c21b0d52279acf287f28365dbb4c2c53",
+    "movie_mapping.csv": "4a86f3fcfcf2aa414828df4e2ba58d5b22a7516e73850eb54f989bd5ce68e8fb",
+    "positive_interactions.npz": "ed3350465c78bebbc441244eb8219ba05ce6750b9c5d08bab41b3c68aaec413c",
+    "genre_features.npz": "87580f91b26ef4fccfc41b6c3335b07c5596e95efeed96b41b49fe9ccf9b3e34",
+    "validation_contexts.jsonl": "f07216b1bd535676ac7c589ede504839eac240ec844f9e1b01e557c76bd05563",
+    "test_contexts.jsonl": "24901643b816817258213b8d03ad708929ff0f9778934c8a6c3be3b183c765dc",
+    "explicit_ratings.npz": "6009fa30184b6a182b06dbb124d2da098bdb52b62e307a2fbbb84657469e235e"
+  },
+  "validation_metrics": {
+    "users": 5776,
+    "MeanHits@5": 0.23112880886426593,
+    "Precision@5": 0.04622576177285319,
+    "HitRate@5": 0.16585872576177285,
+    "Recall@5": 0.023896992141851408,
+    "NDCG@5": 0.049795134075425,
+    "CatalogCoverage@5": 0.06872102536133079,
+    "MeanHits@10": 0.42209141274238227,
+    "Precision@10": 0.04220914127423823,
+    "HitRate@10": 0.2510387811634349,
+    "Recall@10": 0.0436361434572091,
+    "NDCG@10": 0.05234364728712433,
+    "CatalogCoverage@10": 0.10008181074447778
+  },
+  "test_metrics": {
+    "users": 5765,
+    "MeanHits@5": 0.23902862098872507,
+    "Precision@5": 0.047805724197745016,
+    "HitRate@5": 0.17571552471812663,
+    "Recall@5": 0.024772851969286223,
+    "NDCG@5": 0.05177344817780796,
+    "CatalogCoverage@5": 0.07281156258521952,
+    "MeanHits@10": 0.41058109280138766,
+    "Precision@10": 0.04105810928013877,
+    "HitRate@10": 0.2471812662619254,
+    "Recall@10": 0.0418317125760313,
+    "NDCG@10": 0.05183453350792317,
+    "CatalogCoverage@10": 0.10962639760021817
+  },
+  "software": {
+    "python": "3.11.17",
+    "numpy": "1.26.4",
+    "pandas": "3.0.6",
+    "scipy": "1.17.1",
+    "lightfm": "1.17"
+  },
+  "windows_rng_repair": null,
+  "total_seconds": 150.1023789999308
+}

@@ -1,0 +1,14 @@
+﻿metric,value,unit
+users,6040.0,count
+catalog_movies,3883.0,count
+rated_movies,3706.0,count
+unrated_catalog_movies,177.0,count
+ratings,1000209.0,count
+mean_rating,3.581564453029317,stars
+rating_4_or_5_share,0.5751607913945985,fraction
+median_ratings_per_user,96.0,count
+top_10_percent_users_rating_share,0.38092738617628913,fraction
+top_20_percent_rated_movies_rating_share,0.6520697174290573,fraction
+genres,18.0,count
+full_catalog_density,0.04264679797998748,fraction
+full_catalog_sparsity,0.9573532020200125,fraction

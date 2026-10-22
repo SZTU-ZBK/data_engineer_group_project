@@ -19,7 +19,11 @@ def rank_candidates(scores, movie_ids, seen_movie_ids, k: int = 10):
 
 
 def ranking_metrics(recommended_movie_ids, relevant_movie_ids, k_values=(5, 10)) -> dict:
-    """Binary-relevance Recall/NDCG. Recall denominator is ALL warm targets."""
+    """Binary-relevance hits, Precision, Recall and NDCG at each cutoff.
+
+    Precision divides by the requested list length; Recall divides by ALL warm
+    targets. Unrated recommendations are non-hits, not confirmed dislikes.
+    """
     recommended = list(recommended_movie_ids)
     relevant = set(relevant_movie_ids)
     if not relevant or len(set(recommended)) != len(recommended):
@@ -31,6 +35,8 @@ def ranking_metrics(recommended_movie_ids, relevant_movie_ids, k_values=(5, 10))
         hits = np.asarray([movie in relevant for movie in recommended[:k]], dtype="float64")
         discounts = 1 / np.log2(np.arange(2, k + 2))
         ideal = discounts[:min(k, len(relevant))].sum()
+        result[f"Hits@{k}"] = int(hits.sum())
+        result[f"Precision@{k}"] = float(hits.sum() / k)
         result[f"Recall@{k}"] = float(hits.sum() / len(relevant))
         result[f"NDCG@{k}"] = float(np.dot(hits, discounts) / ideal)
     return result
@@ -63,6 +69,9 @@ def evaluate_ranking(score_fn, contexts: pd.DataFrame, movie_ids, k_values=(5, 1
     per_user = pd.DataFrame(rows)
     aggregate = {"users": len(per_user)}
     for k in k_values:
+        aggregate[f"MeanHits@{k}"] = float(per_user[f"Hits@{k}"].mean())
+        aggregate[f"Precision@{k}"] = float(per_user[f"Precision@{k}"].mean())
+        aggregate[f"HitRate@{k}"] = float(per_user[f"Hits@{k}"].gt(0).mean())
         aggregate[f"Recall@{k}"] = float(per_user[f"Recall@{k}"].mean())
         aggregate[f"NDCG@{k}"] = float(per_user[f"NDCG@{k}"].mean())
         aggregate[f"CatalogCoverage@{k}"] = len(recommended_catalog[k]) / len(movie_ids)

@@ -94,6 +94,10 @@ class RankingTests(unittest.TestCase):
 
     def test_recall_and_discounted_gain_match_hand_calculation(self):
         result = ranking_metrics([30, 20, 10], {10, 30}, k_values=(1, 3))
+        self.assertEqual(result["Hits@1"], 1)
+        self.assertEqual(result["Hits@3"], 2)
+        self.assertEqual(result["Precision@1"], 1)
+        self.assertAlmostEqual(result["Precision@3"], 2 / 3)
         self.assertEqual(result["Recall@1"], 0.5)
         self.assertEqual(result["NDCG@1"], 1)
         self.assertEqual(result["Recall@3"], 1)
@@ -118,8 +122,31 @@ class RankingTests(unittest.TestCase):
         self.assertEqual(calls, [(1, [1])])
         self.assertEqual(aggregate["users"], 1)
         self.assertEqual(aggregate["Recall@1"], 1)
+        self.assertEqual(aggregate["Precision@1"], 1)
+        self.assertEqual(aggregate["MeanHits@1"], 1)
+        self.assertEqual(aggregate["HitRate@1"], 1)
         self.assertEqual(per_user["user_id"].tolist(), [1])
         self.assertAlmostEqual(aggregate["CatalogCoverage@1"], 1 / 3)
+
+    def test_precision_denominator_is_list_length_not_relevant_count(self):
+        result = ranking_metrics([10, 20, 30, 40, 50], {10}, k_values=(5,))
+        self.assertEqual(result["Hits@5"], 1)
+        self.assertEqual(result["Recall@5"], 1)
+        self.assertEqual(result["Precision@5"], 0.2)
+
+    def test_precision_mean_hits_and_hit_rate_are_distinct_aggregates(self):
+        contexts = pd.DataFrame([
+            {"user_id": 1, "eligible": True, "positive_movie_tokens": [], "seen_movie_ids": [],
+             "relevant_movie_ids": [10], "candidate_count": 3},
+            {"user_id": 2, "eligible": True, "positive_movie_tokens": [], "seen_movie_ids": [],
+             "relevant_movie_ids": [30], "candidate_count": 3},
+        ])
+        aggregate, per_user = evaluate_ranking(lambda user, tokens: [3, 2, 1], contexts,
+                                               [10, 20, 30], k_values=(2,))
+        self.assertEqual(per_user["Hits@2"].tolist(), [1, 0])
+        self.assertEqual(aggregate["MeanHits@2"], 0.5)
+        self.assertEqual(aggregate["Precision@2"], 0.25)
+        self.assertEqual(aggregate["HitRate@2"], 0.5)
 
 
 if __name__ == "__main__":

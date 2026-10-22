@@ -34,10 +34,11 @@ python -m jupyterlab
 src/data.py                         数据读取、质量检查、清洗、时间划分与相关性标签
 src/features.py                     训练期特征、稀疏矩阵、行为序列与共享评估上下文
 src/models/item_cf.py               正反馈 ItemCF、模型保存与恢复
-src/evaluate.py                     共享候选排名、Recall/NDCG 与目录覆盖率
+src/evaluate.py                     共享排名、Precision/Recall/NDCG、命中统计与覆盖率
 src/recommend.py                    电影推荐、标题/类型展示与相似历史解释
 train.py                           验证集调参、选定模型的最终测试与结果导出
 recommend.py                       按用户 ID 输出推荐的命令行入口
+audit_itemcf.py                    原始数据对齐、相似度/评估审计及推荐观测状态诊断
 notebooks/01_data_analysis.ipynb     数据探索、预处理、检查结果与中文分析
 notebooks/02_itemcf.ipynb            ItemCF 原理、搜索结果、评估及用户推荐演示
 outputs/figures/                    Notebook 自动生成的 PNG 图表
@@ -126,6 +127,7 @@ python -m unittest discover -s tests -v
 
 ```bash
 python train.py --model itemcf
+python audit_itemcf.py
 python recommend.py --user-id 1 --stage test --top-k 10
 ```
 
@@ -144,7 +146,11 @@ python recommend.py --user-id 1 --stage test --top-k 10
 可通过 `--neighbors 20 50 --shrinkage 0 10` 指定搜索范围；参数变体属于同一种算法。
 
 评估使用共享用户集合、完整未评分训练目录，不采样评估负例；报告按用户宏平均的
-Recall@5/10、NDCG@5/10，以及推荐电影数占训练目录的覆盖率。
+Precision@5/10、Recall@5/10、NDCG@5/10、平均命中数（MeanHits），
+至少命中一部的用户比例（HitRate），以及推荐电影数占训练目录的覆盖率。
+Precision = 命中数 / K，MeanHits = K × Precision；HitRate 衡量至少命中一部的用户占比。
+未评分推荐不计为离线命中，但其真实偏好未知，因此 1 − Precision 不能解释为实际不喜欢比例。
+新增 Precision 保留原有的验证 NDCG@10 选参规则，避免根据测试反馈改变选择标准。
 Top-5/10 是本项目的实验设置，课程硬性要求为推荐至少 5 部未评分电影。
 同推荐分数按原始电影 ID 升序排列；零支持候选仍保留为零分，不隐式引入其他推荐模型。
 余弦相似度不直接解决长尾可靠性、流行度偏差或交互冷启动问题。
@@ -157,7 +163,23 @@ Top-5/10 是本项目的实验设置，课程硬性要求为推荐至少 5 部�
   每位推荐 10 部电影，包含标题、类型、相似历史解释与测试命中标记。
 - `outputs/tables/itemcf_run.json`：配置、指标、输入校验和、软件版本和运行耗时。
 - `outputs/figures/09_itemcf_validation_search.png`：Notebook 生成的验证搜索图。
+- `outputs/figures/10_itemcf_hit_distribution.png`：Top-10 命中部数的用户分布。
+- `outputs/figures/11_itemcf_recommendation_status.png`：每张推荐列表中高分、1–3 分、未观察评分的构成。
 - `outputs/models/itemcf/`：本地相似度模型、运行记录和逐用户测试指标，已加入 Git 忽略规则。
+
+`audit_itemcf.py` 固定使用当前模型，检查原始 `.dat` 与划分记录是否对齐、标签是否正确、
+保存矩阵是否能由评分重建、真实数据抽样的相似度和邻居方向、所有评估历史/目标/候选及
+独立命中计数，并导出以下诊断表：
+
+- `itemcf_integrity_checks.csv`：具体检查的违规数量，非零时审计报错。
+- `itemcf_recommendation_status.csv`：留出期高分、低于阈值及无评分记录的推荐数量和比例。
+- `itemcf_evaluation_scope.csv`：候选规模、可观察正例数、零分推荐及训练热度等描述性统计。
+- `itemcf_hit_distribution.csv`：Top-5/10 命中数量分布。
+- `itemcf_validation_reference.csv`：相同验证协议下的训练热门排序诊断参照与 ItemCF 结果。
+
+诊断参照不占用三种项目算法的选型名额，也不用于测试调参。审计通过能排除所列具体
+数据或计分不一致，不能证明当前 ItemCF 变体最优。高比例无评分记录反映离线反馈稀疏，
+不能据此推断这些未知推荐一定会被用户喜欢；仅在有评分推荐上计算的高分比例存在选择偏差。
 
 推荐入口会检查预处理文件校验和；重新划分数据后，需要重新训练与评估以匹配新输入。
 该算法的拟合、排名和搜索顺序均确定，不使用随机采样，因此随机种子记为 `null`，

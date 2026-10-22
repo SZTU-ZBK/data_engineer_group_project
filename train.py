@@ -52,7 +52,8 @@ def run_itemcf(processed_dir, output_dir, neighbors, shrinkages):
         if best_key is None or key > best_key:
             best_model, best_validation, best_key = model, dict(metrics), key
         print(f'Validation neighbors={n_neighbors}, shrinkage={shrinkage:g}: '
-              f'NDCG@10={metrics["NDCG@10"]:.6f}, Recall@10={metrics["Recall@10"]:.6f}', flush=True)
+              f'NDCG@10={metrics["NDCG@10"]:.6f}, Recall@10={metrics["Recall@10"]:.6f}, '
+              f'Precision@10={metrics["Precision@10"]:.6f}', flush=True)
 
     # Only load test labels after the validation-only selection is complete.
     print(f'Selected neighbors={best_model.n_neighbors}, shrinkage={best_model.shrinkage:g}', flush=True)
@@ -98,6 +99,9 @@ def run_itemcf(processed_dir, output_dir, neighbors, shrinkages):
         "validation_history": preprocessing["validation_history"], "test_history": preprocessing["test_history"],
         "model_fit_partitions": ["train"], "refit_on_validation": False,
         "k_values": [5, 10], "metric_aggregation": "macro-average over eligible users; warm relevant targets",
+        "precision_definition": "hits / k; unrated recommendations are non-hits, not confirmed dislikes",
+        "mean_hits_definition": "average number of held-out relevant movies in each top-k list",
+        "hit_rate_definition": "fraction of eligible users with at least one hit in the top-k list",
         "catalog_coverage_denominator": len(movie_ids), "random_seed": None,
         "early_stopping": "not applicable: closed-form neighbor fitting",
         "fit_seconds_selected_trial": best_model.fit_seconds_, "test_evaluation_seconds": test_seconds,

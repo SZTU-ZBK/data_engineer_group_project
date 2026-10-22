@@ -1,0 +1,3 @@
+stage,users,mean_candidate_count,mean_observed_positive_targets,users_with_one_observed_positive,users_with_fewer_than_10_observed_positives,mean_observable_precision_ceiling_at_10,zero_score_top10_slots,mean_nonzero_score_candidates,mean_training_support_recommended,mean_training_support_unseen_candidates
+validation,5776,3530.9516966759,9.267659279778393,532,3938,0.6009868421052631,0,583.0865650969529,1542.5208440838676,114.02432595263558
+test,5765,3513.705637467476,8.970858629661752,532,3995,0.5942584562012142,0,618.532523850824,1532.1601735944657,112.65228025927713

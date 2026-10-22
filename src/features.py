@@ -1,10 +1,14 @@
 """Training-only model inputs and a shared offline recommendation protocol."""
 
 from dataclasses import dataclass
+import hashlib
 import json
 from pathlib import Path
+import platform
 
+import numpy as np
 import pandas as pd
+import scipy
 from scipy.sparse import csr_matrix, save_npz
 
 
@@ -136,6 +140,45 @@ def evaluation_summary(contexts: dict[str, pd.DataFrame]) -> pd.DataFrame:
             "eligible_relevant_pairs": int(frame.loc[frame["eligible"], "relevant_movie_ids"].map(len).sum()),
         })
     return pd.DataFrame(rows).set_index("stage")
+
+
+def build_preprocessing_config(
+    data_dir: str | Path, cleaned_ratings: pd.DataFrame, *,
+    split_ratios: tuple[float, float, float] = (0.8, 0.1, 0.1),
+    relevance_threshold: int = 4, evaluation_k: int = 10,
+) -> dict:
+    """Build the existing export metadata without cluttering the analysis notebook."""
+    data_dir = Path(data_dir)
+    return {
+        "dataset": "MovieLens 1M",
+        "source_sha256": {f"{name}.dat": hashlib.sha256((data_dir / f"{name}.dat").read_bytes()).hexdigest()
+                          for name in ["users", "movies", "ratings"]},
+        "software": {"python": platform.python_version(), "pandas": pd.__version__,
+                     "numpy": np.__version__, "scipy": scipy.__version__},
+        "split_ratios": dict(zip(["train", "validation", "test"], split_ratios)),
+        "split_method": "per_user_nearest_feasible_cumulative_timestamp_groups",
+        "boundary_tie_break": "earlier_timestamp_group",
+        "users_with_fewer_than_3_timestamp_groups": "train_only",
+        "train_only_user_count": int(cleaned_ratings.groupby("user_id")["timestamp"].nunique().lt(3).sum()),
+        "global_calendar_split": False,
+        "relevance_threshold": relevance_threshold,
+        "label_definition": "rating >= relevance_threshold; original ratings retained",
+        "mapping_fit_partition": "train",
+        "sequence_source": "positive training interactions, ordered by timestamp then movie_id",
+        "sequence_max_length": None,
+        "padding_token": 0,
+        "sequence_movie_token": "movie_index + 1",
+        "candidate_universe": "all movies observed in train",
+        "history_filter": "exclude all previously rated movies, including low ratings",
+        "validation_history": ["train"],
+        "test_history": ["train", "validation"],
+        "model_fit_partitions": ["train"],
+        "evaluation_k": evaluation_k,
+        "evaluation_users": "positive training history, warm positive target, at least k candidates",
+        "cold_target_policy": "reported separately, excluded from primary warm-target ranking metrics",
+        "negative_sampling": "not performed",
+        "random_seed": None,
+    }
 
 
 def save_preprocessed_artifacts(

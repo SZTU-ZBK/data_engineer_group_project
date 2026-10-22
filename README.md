@@ -39,7 +39,7 @@ src/recommend.py                    电影推荐、标题/类型展示与相似�
 train.py                           验证集调参、选定模型的最终测试与结果导出
 recommend.py                       按用户 ID 输出推荐的命令行入口
 audit_itemcf.py                    原始数据对齐、相似度/评估审计及推荐观测状态诊断
-notebooks/01_data_analysis.ipynb     数据探索、预处理、检查结果与中文分析
+notebooks/01_data_analysis.ipynb     数据概况、探索总览图与预处理
 notebooks/02_itemcf.ipynb            ItemCF 原理、搜索结果、评估及用户推荐演示
 outputs/figures/                    Notebook 自动生成的 PNG 图表
 outputs/tables/                     Notebook 自动生成的统计汇总 CSV
@@ -67,24 +67,18 @@ print(dataset_summary(tables))
 
 ## 结果与复现
 
-`01_data_analysis.ipynb` 包含数据概况、字段统计、质量检查，以及以下五项探索：
-
-- 1–5 分的评分数量、比例和平均分。
-- 用户评分数量分布、分位数及活跃用户评分集中度。
-- 电影评分数量分布、热门电影 Top 10，以及电影热度集中度。
-- 将多类型字段拆分后统计电影类型；同一部电影可以计入多个类型。
-- 分别按全部电影和有评分电影计算用户—电影交互密度、稀疏度。
-
-所有分析文字中的数值由当前数据动态生成。图表使用英文标签，分析说明使用中文。
-运行全部单元格后，图表保存到 `outputs/figures/`，统计表保存到 `outputs/tables/`，
-可用于报告或展示；这些文件均由 Notebook 重新生成，不包含原始用户评分记录。
+`01_data_analysis.ipynb` 用数据对比表和字段表展示形状、缺失值、重复行、数据类型及唯一值数量。
+一张总览图展示评分、用户活跃度、电影热度和类型分布，并简要说明平均评分、高分比例及交互稀疏度。
+图表保存为 `outputs/figures/01_data_overview.png`，预处理汇总表保存到 `outputs/tables/`。
+图表使用英文标签，分析说明使用中文，数值由当前数据计算。
+早期探索与诊断图仍保留在输出目录，精简后的 Notebook 不再展示或刷新这些旧图表。
 当前分析使用完整数据，仅用于描述性探索；这些统计不作为训练特征直接输入模型。
 未评分表示未知偏好，不能据此直接判定用户不喜欢电影。
 当前探索和划分均不使用随机过程，配置中的 `random_seed` 为 `null`；模型训练时另行设置种子。
 
 ## 预处理与评估协议
 
-Notebook 第 13–18 节执行完整预处理流程，重复运行可重新生成本地输入和汇总结果。
+Notebook 第 3–6 节执行预处理流程，重复运行可重新生成本地输入和汇总结果。
 
 1. 清洗：检查必要字段、1–5 分整数评分、非负且可解析的 Unix 时间戳和有效用户/电影 ID，
    删除完全重复的评分行，并输出每步的删除数量。不同评分/时间的重复用户—电影对会报错，
@@ -113,7 +107,7 @@ Notebook 第 13–18 节执行完整预处理流程，重复运行可重新生�
 三个稀疏矩阵 NPZ、训练序列 JSONL、验证/测试上下文 JSONL、类型词表和 `config.json`。
 配置记录划分、标签、候选与历史规则，以及源文件 SHA-256 和软件版本。
 该目录包含交互级数据，已加入 `.gitignore`，组员应自行运行 Notebook 生成。
-报告所用清洗审计、划分规模、泄漏检查、输入规模及评估用户统计保存在 `outputs/tables/`。
+清洗、划分检查保留在处理流程中，Notebook 仅展示关键汇总；详细清洗记录、划分检查、输入规模及评估用户统计保存在 `outputs/tables/`。
 
 在项目根目录运行检查：
 
@@ -127,12 +121,13 @@ python -m unittest discover -s tests -v
 
 ```bash
 python train.py --model itemcf
-python audit_itemcf.py
-python recommend.py --user-id 1 --stage test --top-k 10
+python recommend.py --user-id 1 --stage test --top-k 5
 ```
 
 打开 `notebooks/02_itemcf.ipynb` 查看原理、已保存的搜索与评估结果，修改 `USER_ID`
 和 `TOP_K` 后即可重新生成对应用户的推荐；Notebook 不会自动重复调参或测试。
+Notebook 只展示验证选参表、Precision/Recall/NDCG@10、平均命中数和电影标题/类型，默认推荐 5 部。
+完整审计和命中分布属于可选分析，另行运行 `python audit_itemcf.py`，不再作为 Notebook 的前置步骤。
 
 本实现是**基于正反馈的 ItemCF 排名基线**：用训练集中评分至少 4 分的二值矩阵计算
 电影共现次数与余弦相似度，可乘以 `共现次数 / (共现次数 + shrinkage)` 进行收缩。
@@ -162,9 +157,6 @@ Top-5/10 是本项目的实验设置，课程硬性要求为推荐至少 5 部�
 - `outputs/tables/itemcf_recommendation_examples.csv`：按 ID 顺序选择的前三位可评估测试用户，
   每位推荐 10 部电影，包含标题、类型、相似历史解释与测试命中标记。
 - `outputs/tables/itemcf_run.json`：配置、指标、输入校验和、软件版本和运行耗时。
-- `outputs/figures/09_itemcf_validation_search.png`：Notebook 生成的验证搜索图。
-- `outputs/figures/10_itemcf_hit_distribution.png`：Top-10 命中部数的用户分布。
-- `outputs/figures/11_itemcf_recommendation_status.png`：每张推荐列表中高分、1–3 分、未观察评分的构成。
 - `outputs/models/itemcf/`：本地相似度模型、运行记录和逐用户测试指标，已加入 Git 忽略规则。
 
 `audit_itemcf.py` 固定使用当前模型，检查原始 `.dat` 与划分记录是否对齐、标签是否正确、

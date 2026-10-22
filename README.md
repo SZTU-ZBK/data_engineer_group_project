@@ -1,6 +1,6 @@
 # MovieLens 1M 电影推荐系统
 
-CS5481 小组项目一。当前已完成数据读取、探索与可视化，以及时间划分、相关性标签和模型输入预处理。
+CS5481 小组项目一。当前已完成数据探索、预处理，以及第一种算法 ItemCF 的训练、验证调参、评估和推荐展示。
 
 ## 环境与运行
 
@@ -33,11 +33,18 @@ python -m jupyterlab
 ```text
 src/data.py                         数据读取、质量检查、清洗、时间划分与相关性标签
 src/features.py                     训练期特征、稀疏矩阵、行为序列与共享评估上下文
+src/models/item_cf.py               正反馈 ItemCF、模型保存与恢复
+src/evaluate.py                     共享候选排名、Recall/NDCG 与目录覆盖率
+src/recommend.py                    电影推荐、标题/类型展示与相似历史解释
+train.py                           验证集调参、选定模型的最终测试与结果导出
+recommend.py                       按用户 ID 输出推荐的命令行入口
 notebooks/01_data_analysis.ipynb     数据探索、预处理、检查结果与中文分析
+notebooks/02_itemcf.ipynb            ItemCF 原理、搜索结果、评估及用户推荐演示
 outputs/figures/                    Notebook 自动生成的 PNG 图表
 outputs/tables/                     Notebook 自动生成的统计汇总 CSV
 data/processed/                    本地模型输入与配置，不纳入 Git
 tests/test_preprocessing.py         时间边界、留出数据隔离和候选过滤测试
+tests/test_itemcf.py                相似度手算、排名指标、推荐过滤和保存恢复测试
 requirements.txt                    数据阶段的依赖
 ```
 
@@ -113,7 +120,52 @@ Notebook 第 13–18 节执行完整预处理流程，重复运行可重新生�
 python -m unittest discover -s tests -v
 ```
 
-下一步使用这些共享输入实现并评估第一种推荐算法。
+## ItemCF 基线
+
+先运行 `01_data_analysis.ipynb` 生成预处理输入，再在项目根目录执行：
+
+```bash
+python train.py --model itemcf
+python recommend.py --user-id 1 --stage test --top-k 10
+```
+
+打开 `notebooks/02_itemcf.ipynb` 查看原理、已保存的搜索与评估结果，修改 `USER_ID`
+和 `TOP_K` 后即可重新生成对应用户的推荐；Notebook 不会自动重复调参或测试。
+
+本实现是**基于正反馈的 ItemCF 排名基线**：用训练集中评分至少 4 分的二值矩阵计算
+电影共现次数与余弦相似度，可乘以 `共现次数 / (共现次数 + shrinkage)` 进行收缩。
+去掉自身相似度，每部历史电影仅保留最相似的若干邻居，再累加用户已知正反馈电影对
+候选电影的相似度贡献。分数是排序值，不是预测星级。电影类型和人口属性不参与这版 ItemCF。
+邻居截断按来源电影逐行执行，截断后的相似度矩阵可能不对称。
+
+默认搜索 `n_neighbors = [20, 50, 100]` 和 `shrinkage = [0, 10, 50]` 的 9 种参数组合，
+以验证集 NDCG@10 选参；同分依次比较 Recall@10、较小邻居数与较小收缩参数。
+选定后仅评估该配置的测试表现，模型相似度仍只根据训练集拟合。
+可通过 `--neighbors 20 50 --shrinkage 0 10` 指定搜索范围；参数变体属于同一种算法。
+
+评估使用共享用户集合、完整未评分训练目录，不采样评估负例；报告按用户宏平均的
+Recall@5/10、NDCG@5/10，以及推荐电影数占训练目录的覆盖率。
+Top-5/10 是本项目的实验设置，课程硬性要求为推荐至少 5 部未评分电影。
+同推荐分数按原始电影 ID 升序排列；零支持候选仍保留为零分，不隐式引入其他推荐模型。
+余弦相似度不直接解决长尾可靠性、流行度偏差或交互冷启动问题。
+
+导出位置：
+
+- `outputs/tables/itemcf_validation_search.csv`：全部验证参数、指标与耗时。
+- `outputs/tables/itemcf_metrics.csv`：选定配置的验证与测试指标。
+- `outputs/tables/itemcf_recommendation_examples.csv`：按 ID 顺序选择的前三位可评估测试用户，
+  每位推荐 10 部电影，包含标题、类型、相似历史解释与测试命中标记。
+- `outputs/tables/itemcf_run.json`：配置、指标、输入校验和、软件版本和运行耗时。
+- `outputs/figures/09_itemcf_validation_search.png`：Notebook 生成的验证搜索图。
+- `outputs/models/itemcf/`：本地相似度模型、运行记录和逐用户测试指标，已加入 Git 忽略规则。
+
+推荐入口会检查预处理文件校验和；重新划分数据后，需要重新训练与评估以匹配新输入。
+该算法的拟合、排名和搜索顺序均确定，不使用随机采样，因此随机种子记为 `null`，
+早停不适用于这种直接计算相似邻居的训练方式。现有测试可通过上面的 unittest 命令运行。
+
+算法参考：Badrul Sarwar, George Karypis, Joseph Konstan, and John Riedl. 2001.
+[*Item-based Collaborative Filtering Recommendation Algorithms*](https://ra.ethz.ch/cdstore/www10/papers/519/sdm2.html).
+本项目采用二值正反馈、Top-N 排名及可选收缩的具体实现，实验使用本项目的统一划分协议。
 
 ## 数据引用
 

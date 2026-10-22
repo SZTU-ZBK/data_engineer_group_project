@@ -1,0 +1,80 @@
+{
+  "algorithm": "positive_feedback_itemcf",
+  "input": "binary rating >= relevance_threshold",
+  "selection_metric": "NDCG@10 on validation",
+  "tie_break": "Recall@10, then smaller neighbors/shrinkage",
+  "selected_parameters": {
+    "n_neighbors": 50,
+    "shrinkage": 0.0
+  },
+  "grid": {
+    "n_neighbors": [
+      20,
+      50,
+      100
+    ],
+    "shrinkage": [
+      0.0,
+      10.0,
+      50.0
+    ]
+  },
+  "similarity": "cosine * cooccurrence/(cooccurrence+shrinkage); diagonal=0; top neighbors per source item",
+  "scoring": "sum of retained similarities from known positive history; scores are not star predictions",
+  "score_tie_break": "ascending raw movie ID; zero-support candidates remain eligible with score zero",
+  "candidate_protocol": "full unseen training catalog, shared preprocessing cohorts; no sampled negatives",
+  "validation_history": [
+    "train"
+  ],
+  "test_history": [
+    "train",
+    "validation"
+  ],
+  "model_fit_partitions": [
+    "train"
+  ],
+  "refit_on_validation": false,
+  "k_values": [
+    5,
+    10
+  ],
+  "metric_aggregation": "macro-average over eligible users; warm relevant targets",
+  "catalog_coverage_denominator": 3667,
+  "random_seed": null,
+  "early_stopping": "not applicable: closed-form neighbor fitting",
+  "fit_seconds_selected_trial": 1.5727655999362469,
+  "test_evaluation_seconds": 4.756692899973132,
+  "total_seconds": 57.25042309996206,
+  "software": {
+    "python": "3.11.17",
+    "numpy": "2.4.6",
+    "pandas": "3.0.6",
+    "scipy": "1.17.1"
+  },
+  "input_sha256": {
+    "config.json": "0393d3289ebc0b1dc048a462441dca2fbd0cf808d6c0504dd7b043677a16e319",
+    "movie_mapping.csv": "4a86f3fcfcf2aa414828df4e2ba58d5b22a7516e73850eb54f989bd5ce68e8fb",
+    "positive_interactions.npz": "ed3350465c78bebbc441244eb8219ba05ce6750b9c5d08bab41b3c68aaec413c",
+    "validation_contexts.jsonl": "f07216b1bd535676ac7c589ede504839eac240ec844f9e1b01e557c76bd05563",
+    "test_contexts.jsonl": "24901643b816817258213b8d03ad708929ff0f9778934c8a6c3be3b183c765dc"
+  },
+  "example_user_selection": "first three eligible test users in ascending user ID",
+  "validation_metrics": {
+    "users": 5776,
+    "Recall@5": 0.04572421667053754,
+    "NDCG@5": 0.07820542200287631,
+    "CatalogCoverage@5": 0.09408235614944097,
+    "Recall@10": 0.07889681607745247,
+    "NDCG@10": 0.08443214174405488,
+    "CatalogCoverage@10": 0.13144259612762477
+  },
+  "test_metrics": {
+    "users": 5765,
+    "Recall@5": 0.04144550364892148,
+    "NDCG@5": 0.07289499739049503,
+    "CatalogCoverage@5": 0.08481047177529316,
+    "Recall@10": 0.07119733166602206,
+    "NDCG@10": 0.0772609360488073,
+    "CatalogCoverage@10": 0.12626124897736568
+  }
+}

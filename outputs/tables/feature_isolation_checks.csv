@@ -1,0 +1,7 @@
+﻿check,violations
+mapped_users_outside_train,0
+mapped_movies_outside_train,0
+explicit_nonzero_count_difference,0
+positive_nonzero_count_difference,0
+sequence_events_outside_positive_train,0
+positive_train_events_missing_from_sequences,0

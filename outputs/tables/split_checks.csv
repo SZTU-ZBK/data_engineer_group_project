@@ -1,0 +1,10 @@
+﻿check,violations
+row_count_difference,0
+duplicate_event_ids,0
+missing_event_ids,0
+unexpected_event_ids,0
+timestamp_groups_crossing_splits,0
+user_movie_pairs_crossing_splits,0
+train_not_before_validation,0
+validation_not_before_test,0
+train_not_before_test,0

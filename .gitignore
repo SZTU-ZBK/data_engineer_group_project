@@ -225,3 +225,4 @@ __marimo__/
 # Local MovieLens raw data (download separately from GroupLens)
 /ml-1m/
 /data/ml-1m/
+/data/processed/

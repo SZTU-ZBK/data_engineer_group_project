@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 
@@ -136,3 +137,139 @@ def quality_checks(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
         "negative_timestamps": int((ratings["timestamp"] < 0).sum()),
     }
     return pd.DataFrame(checks.items(), columns=["check", "count"]).set_index("check")
+
+
+def clean_ratings(
+    tables: dict[str, pd.DataFrame],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Remove invalid/exact duplicate rows with an audit; retain original scores.
+
+    event_id is the zero-based row position in the input ratings file. Repeated
+    user/movie pairs with conflicting scores/times require an explicit policy
+    and raise an error rather than silently choosing a future observation.
+    """
+    frame = tables["ratings"].copy().reset_index(drop=True)
+    frame.insert(0, "event_id", np.arange(len(frame), dtype="int64"))
+    required = ["user_id", "movie_id", "rating", "timestamp"]
+    audit = [{"action": "input", "removed_rows": 0, "remaining_rows": len(frame)}]
+
+    def remove(mask: pd.Series, action: str) -> None:
+        nonlocal frame
+        removed = int(mask.sum())
+        frame = frame.loc[~mask].copy()
+        audit.append({"action": action, "removed_rows": removed, "remaining_rows": len(frame)})
+
+    remove(frame[required].isna().any(axis=1), "missing_required_fields")
+    remove(~frame["rating"].isin([1, 2, 3, 4, 5]), "invalid_rating")
+    frame["rated_at"] = pd.to_datetime(frame["timestamp"], unit="s", utc=True, errors="coerce")
+    remove((frame["timestamp"] < 0) | frame["rated_at"].isna(), "invalid_timestamp")
+    remove(~frame["user_id"].isin(tables["users"]["user_id"]), "unknown_user")
+    remove(~frame["movie_id"].isin(tables["movies"]["movie_id"]), "unknown_movie")
+    remove(frame.duplicated(subset=required), "exact_duplicate")
+    if frame.duplicated(["user_id", "movie_id"]).any():
+        raise ValueError("Repeated user/movie pairs remain; define a repeat-rating policy first.")
+    if frame.empty:
+        raise ValueError("No valid ratings remain after cleaning.")
+    return frame.reset_index(drop=True), pd.DataFrame(audit).set_index("action")
+
+
+def chronological_split(
+    ratings: pd.DataFrame,
+    ratios: tuple[float, float, float] = (0.8, 0.1, 0.1),
+) -> dict[str, pd.DataFrame]:
+    """Split each user's timestamp groups, approximately by rating counts.
+
+    Choose the nearest feasible cumulative boundaries to train and train+val
+    targets, resolving equal distances toward the earlier boundary. Users with
+    fewer than three timestamp groups stay entirely in train. Same-time rows
+    never cross splits. This is per-user chronology, not a global date cutoff.
+    """
+    if len(ratios) != 3 or any(value <= 0 for value in ratios) or not np.isclose(sum(ratios), 1):
+        raise ValueError("Provide three positive split ratios summing to one.")
+    if ratings.empty or ratings["event_id"].duplicated().any():
+        raise ValueError("Provide nonempty cleaned ratings with unique event_id values.")
+    groups = (ratings.groupby(["user_id", "timestamp"], sort=True)
+              .size().rename("rows").reset_index())
+    assignments = np.full(len(groups), "train", dtype=object)
+    for _, user_groups in groups.groupby("user_id", sort=False):
+        count = len(user_groups)
+        if count < 3:
+            continue
+        cumulative = user_groups["rows"].to_numpy().cumsum()
+        total = cumulative[-1]
+        train_end = int(np.abs(cumulative[:count - 2] - total * ratios[0]).argmin()) + 1
+        val_end = train_end + int(np.abs(
+            cumulative[train_end:count - 1] - total * (ratios[0] + ratios[1])
+        ).argmin()) + 1
+        positions = user_groups.index.to_numpy()
+        assignments[positions[train_end:val_end]] = "validation"
+        assignments[positions[val_end:]] = "test"
+    groups["split"] = assignments
+    assigned = ratings.merge(groups[["user_id", "timestamp", "split"]],
+                             on=["user_id", "timestamp"], validate="many_to_one")
+    assigned = assigned.sort_values(["user_id", "timestamp", "movie_id", "event_id"], kind="stable")
+    return {
+        name: assigned.loc[assigned["split"].eq(name)].drop(columns="split").reset_index(drop=True)
+        for name in ("train", "validation", "test")
+    }
+
+
+def add_relevance_labels(
+    splits: dict[str, pd.DataFrame], threshold: int = 4,
+) -> dict[str, pd.DataFrame]:
+    """Attach a binary relevance flag after splitting; keep every original rating."""
+    if threshold not in [1, 2, 3, 4, 5]:
+        raise ValueError("Relevance threshold must be an integer from 1 to 5.")
+    return {
+        name: frame.assign(is_relevant=frame["rating"].ge(threshold).astype("int8"))
+        for name, frame in splits.items()
+    }
+
+
+def split_summary(splits: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Report realized split proportions, labels, and training-unseen entities."""
+    total = sum(len(frame) for frame in splits.values())
+    train = splits["train"]
+    train_users, train_movies = set(train["user_id"]), set(train["movie_id"])
+    rows = []
+    for name, frame in splits.items():
+        rows.append({
+            "split": name, "rows": len(frame), "row_share": len(frame) / total,
+            "users": frame["user_id"].nunique(), "movies": frame["movie_id"].nunique(),
+            "positive_rows": int(frame["is_relevant"].sum()),
+            "positive_share": float(frame["is_relevant"].mean()) if len(frame) else 0.0,
+            "cold_users": len(set(frame["user_id"]) - train_users),
+            "cold_movies": len(set(frame["movie_id"]) - train_movies),
+            "cold_movie_rows": int((~frame["movie_id"].isin(train_movies)).sum()),
+            "first_rating_utc": frame["rated_at"].min(), "last_rating_utc": frame["rated_at"].max(),
+        })
+    return pd.DataFrame(rows).set_index("split")
+
+
+def validate_splits(
+    splits: dict[str, pd.DataFrame], original: pd.DataFrame,
+) -> pd.DataFrame:
+    """Check conservation, disjointness, tied timestamps and per-user ordering."""
+    combined = pd.concat([frame.assign(split=name) for name, frame in splits.items()], ignore_index=True)
+    checks = {
+        "row_count_difference": abs(len(combined) - len(original)),
+        "duplicate_event_ids": int(combined["event_id"].duplicated().sum()),
+        "missing_event_ids": len(set(original["event_id"]) - set(combined["event_id"])),
+        "unexpected_event_ids": len(set(combined["event_id"]) - set(original["event_id"])),
+        "timestamp_groups_crossing_splits": int(
+            combined.groupby(["user_id", "timestamp"])["split"].nunique().gt(1).sum()
+        ),
+        "user_movie_pairs_crossing_splits": int(
+            combined.groupby(["user_id", "movie_id"])["split"].nunique().gt(1).sum()
+        ),
+    }
+    for earlier, later in [("train", "validation"), ("validation", "test"), ("train", "test")]:
+        boundaries = pd.concat([
+            splits[earlier].groupby("user_id")["timestamp"].max().rename("earlier"),
+            splits[later].groupby("user_id")["timestamp"].min().rename("later"),
+        ], axis=1).dropna()
+        checks[f"{earlier}_not_before_{later}"] = int(boundaries["earlier"].ge(boundaries["later"]).sum())
+    report = pd.DataFrame(checks.items(), columns=["check", "violations"]).set_index("check")
+    if report["violations"].any():
+        raise ValueError(f"Invalid data split:\n{report}")
+    return report

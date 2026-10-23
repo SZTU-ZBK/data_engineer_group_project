@@ -6,7 +6,8 @@ import re
 import sys
 
 import numpy as np
-from scipy.sparse import csr_matrix, hstack, identity
+import pandas as pd
+from scipy.sparse import csr_matrix
 
 
 WINDOWS_RNG_CAST = re.compile(
@@ -44,15 +45,26 @@ def build_logistic_interactions(explicit_ratings, relevance_threshold=4):
     return interactions
 
 
-def build_item_features(n_items, genres=None):
-    """Keep item identities; optionally append genres and L1-normalize each row."""
-    features = identity(n_items, format="csr", dtype="float32")
-    if genres is not None:
-        genres = csr_matrix(genres, dtype="float32")
-        if genres.shape[0] != n_items or not np.isfinite(genres.data).all() or (genres.data < 0).any():
-            raise ValueError("Genre features must be finite, nonnegative and aligned with items.")
-        features = hstack([features, genres], format="csr")
-    return features.multiply(1 / np.asarray(features.sum(axis=1))).tocsr()
+def build_user_features(user_mapping, metadata):
+    """One-hot gender/age-group/occupation, fitted to training users; no ID columns."""
+    columns = ["gender", "age", "occupation"]
+    aligned = user_mapping[["user_id"]].merge(metadata[["user_id", *columns]], on="user_id",
+                                              how="left", validate="one_to_one", sort=False)
+    if aligned[columns].isna().any().any():
+        raise ValueError("Every training user must have gender, age group and occupation metadata.")
+    encoded = pd.get_dummies(aligned[columns].astype("string"), prefix=columns, dtype="float32")
+    features = csr_matrix(encoded.to_numpy())
+    return features.multiply(1 / np.asarray(features.sum(axis=1))).tocsr(), list(encoded.columns)
+
+
+def build_item_features(genres):
+    """L1-normalized genre multi-hot features only; no movie identity columns."""
+    features = csr_matrix(genres, dtype="float32", copy=True)
+    totals = np.asarray(features.sum(axis=1))
+    if (not features.shape[0] or not features.shape[1] or not np.isfinite(features.data).all()
+            or (features.data < 0).any() or (totals <= 0).any()):
+        raise ValueError("Each movie requires finite, nonnegative, nonempty genre features.")
+    return features.multiply(1 / totals).tocsr()
 
 
 class LightFMRecommender:
@@ -80,8 +92,9 @@ class LightFMRecommender:
         self.user_index = {int(user): index for index, user in enumerate(self.user_ids)}
 
     @classmethod
-    def from_fitted(cls, model, item_features, user_ids):
-        user_biases, user_embeddings = model.get_user_representations()
+    def from_fitted(cls, model, item_features, user_ids, user_features=None):
+        user_biases, user_embeddings = (model.get_user_representations() if user_features is None
+                                        else model.get_user_representations(user_features))
         item_biases, item_embeddings = model.get_item_representations(item_features)
         return cls(user_ids, user_embeddings, user_biases, item_embeddings, item_biases)
 

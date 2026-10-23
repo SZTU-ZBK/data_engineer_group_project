@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix
 
-from src.models.lightfm import (LightFMRecommender, build_item_features, build_logistic_interactions,
+from src.models.lightfm import (LightFMRecommender, build_item_features, build_user_features, build_logistic_interactions,
                                check_training_backend, WINDOWS_RNG_CAST)
 from src.recommend import recommendation_table
 
@@ -29,13 +29,32 @@ class LightFMTests(unittest.TestCase):
         )
         return users, items, LightFMRecommender.from_fitted(fitted, None, self.user_ids)
 
-    def test_identity_and_genre_alignment(self):
-        features = build_item_features(4, self.genres).toarray()
+    def test_genre_features_have_no_movie_identity_columns(self):
+        features = build_item_features(self.genres).toarray()
+        self.assertEqual(features.shape, (4, 2))
         np.testing.assert_allclose(features.sum(axis=1), 1)
-        np.testing.assert_allclose(features[2], [0, 0, 1/3, 0, 1/3, 1/3])
-        np.testing.assert_array_equal(build_item_features(4).toarray(), np.eye(4))
+        np.testing.assert_allclose(features[2], [0.5, 0.5])
+        np.testing.assert_array_equal(features[1], features[3])
         with self.assertRaises(ValueError):
-            build_item_features(4, self.genres[:3])
+            build_item_features(csr_matrix([[0, 0]]))
+
+    def user_metadata(self):
+        return pd.DataFrame({"user_id": [80, 10, 30, 999], "gender": ["F", "F", "M", "X"],
+                             "age": [1, 1, 18, 99], "occupation": [0, 0, 1, 99]})
+
+    def test_user_categories_fit_train_users_and_ignore_identity(self):
+        mapping = pd.DataFrame({"user_id": self.user_ids})
+        features, names = build_user_features(mapping, self.user_metadata())
+        self.assertEqual(features.shape, (3, 6))
+        self.assertFalse(any("99" in name or "user_id" in name for name in names))
+        np.testing.assert_allclose(features.toarray().sum(axis=1), 1)
+        np.testing.assert_array_equal(features.toarray()[0], features.toarray()[2])
+        renamed = self.user_metadata().replace({"user_id": {10: 11, 30: 31, 80: 81}})
+        renamed_features, renamed_names = build_user_features(pd.DataFrame({"user_id": [11, 31, 81]}), renamed)
+        np.testing.assert_array_equal(features.toarray(), renamed_features.toarray())
+        self.assertEqual(names, renamed_names)
+        with self.assertRaises(ValueError):
+            build_user_features(mapping, self.user_metadata().query("user_id != 30"))
 
     def test_scores_use_correct_raw_user_id_and_both_biases(self):
         _, _, model = self.snapshot()
@@ -93,17 +112,22 @@ class LightFMTests(unittest.TestCase):
 
         ratings = csr_matrix([[5, 1, 0, 3], [4, 0, 2, 0], [0, 1, 5, 4]], dtype="float32")
         signed = build_logistic_interactions(ratings)
-        for genres in [None, self.genres]:
-            features = build_item_features(4, genres)
-            engine = LightFM(no_components=4, loss="logistic", random_state=42)
-            engine.fit(signed, item_features=features, epochs=5, num_threads=1)
-            exported = LightFMRecommender.from_fitted(engine, features, self.user_ids)
-            snapshot = exported.score_tokens(30, []).copy()
-            for index, user in enumerate(self.user_ids):
-                expected = engine.predict(index, np.arange(4), item_features=features, num_threads=1)
-                np.testing.assert_allclose(exported.score_tokens(user, []), expected, rtol=1e-5, atol=1e-6)
-            engine.fit_partial(signed, item_features=features, epochs=3, num_threads=1)
-            np.testing.assert_array_equal(exported.score_tokens(30, []), snapshot)
+        features = build_item_features(self.genres)
+        user_features, names = build_user_features(pd.DataFrame({"user_id": self.user_ids}), self.user_metadata())
+        engine = LightFM(no_components=4, loss="logistic", random_state=42)
+        engine.fit(signed, user_features=user_features, item_features=features, epochs=5, num_threads=1)
+        self.assertEqual(engine.user_embeddings.shape, (len(names), 4))
+        self.assertEqual(engine.item_embeddings.shape, (2, 4))
+        exported = LightFMRecommender.from_fitted(engine, features, self.user_ids, user_features=user_features)
+        snapshot = exported.score_tokens(30, []).copy()
+        for index, user in enumerate(self.user_ids):
+            expected = engine.predict(index, np.arange(4), user_features=user_features,
+                                      item_features=features, num_threads=1)
+            np.testing.assert_allclose(exported.score_tokens(user, []), expected, rtol=1e-5, atol=1e-6)
+        np.testing.assert_array_equal(exported.score_tokens(10, []), exported.score_tokens(80, []))
+        self.assertEqual(exported.score_tokens(10, [])[1], exported.score_tokens(10, [])[3])
+        engine.fit_partial(signed, user_features=user_features, item_features=features, epochs=3, num_threads=1)
+        np.testing.assert_array_equal(exported.score_tokens(30, []), snapshot)
 
 
 if __name__ == "__main__":

@@ -3,18 +3,21 @@
 import itertools
 import json
 import platform
+import shutil
 from pathlib import Path
 from time import perf_counter
 
 import numpy as np
 import pandas as pd
 import scipy
-from scipy.sparse import load_npz
+from scipy.sparse import csr_matrix, load_npz
 
+from src.data import resolve_data_dir
 from src.evaluate import evaluate_ranking, write_comparison
-from src.models.lightfm import (LightFMRecommender, build_item_features,
+from src.lightfm_features import build_enriched_features, split_feature_history
+from src.models.lightfm import (LightFMRecommender,
                                build_logistic_interactions, check_training_backend)
-from src.recommend import file_sha256, load_movie_metadata, recommendation_table
+from src.recommend import file_sha256, load_movie_metadata, load_user_metadata, recommendation_table
 
 
 def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, loss="logistic"):
@@ -27,7 +30,7 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
         raise ValueError("Use positive dimensions/epochs and nonnegative regularization.")
     processed_dir, output_dir = processed_dir.resolve(), output_dir.resolve()
     required = ["config.json", "user_mapping.csv", "movie_mapping.csv", "positive_interactions.npz",
-                "genre_features.npz", "validation_contexts.jsonl", "test_contexts.jsonl"]
+                "genre_features.npz", "genre_names.json", "train.csv", "validation_contexts.jsonl", "test_contexts.jsonl"]
     if loss == "logistic":
         required.append("explicit_ratings.npz")
     missing = [name for name in required if not (processed_dir / name).is_file()]
@@ -35,6 +38,10 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
         raise FileNotFoundError(f"Run 01_data_analysis.ipynb first: {missing}")
     checksums = {name: file_sha256(processed_dir / name) for name in required}
     config = json.loads((processed_dir / "config.json").read_text(encoding="utf-8"))
+    user_metadata_path = resolve_data_dir() / "users.dat"
+    user_metadata_sha256 = file_sha256(user_metadata_path)
+    if user_metadata_sha256 != config["source_sha256"]["users.dat"]:
+        raise ValueError("User metadata differs from preprocessing. Regenerate inputs before training.")
     interactions = load_npz(processed_dir / "positive_interactions.npz").tocsr()
     users = pd.read_csv(processed_dir / "user_mapping.csv").sort_values("user_index")
     movies = pd.read_csv(processed_dir / "movie_mapping.csv").sort_values("movie_index")
@@ -50,13 +57,51 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
         if signed.shape != interactions.shape or (signed.maximum(0) != interactions).nnz:
             raise ValueError("Explicit training scores and positive interactions do not align.")
         interactions = signed
-    print(f'LightFM {loss}: {int((interactions.data > 0).sum()):,} positives, '
-          f'{int((interactions.data < 0).sum()):,} negatives; training data only.', flush=True)
     genres = load_npz(processed_dir / "genre_features.npz")
+    if genres.shape[0] != len(movies):
+        raise ValueError("Movie metadata rows do not match the training catalog.")
+    genre_names = json.loads((processed_dir / "genre_names.json").read_text(encoding="utf-8"))
+    if len(genre_names) != genres.shape[1]:
+        raise ValueError("Genre vocabulary and feature columns do not align.")
+    movie_metadata = load_movie_metadata()
+    movie_metadata_sha256 = file_sha256(resolve_data_dir() / "movies.dat")
+    if movie_metadata_sha256 != config["source_sha256"]["movies.dat"]:
+        raise ValueError("Movie metadata differs from preprocessing. Regenerate inputs before training.")
+    train = pd.read_csv(processed_dir / "train.csv")
+    history, fit = split_feature_history(train)
+    user_metadata = load_user_metadata()
+    training_features = build_enriched_features(users, user_metadata, movies, movie_metadata,
+                                                genres, genre_names, history, config["relevance_threshold"])
+    scoring_features = build_enriched_features(users, user_metadata, movies, movie_metadata,
+                                               genres, genre_names, train, config["relevance_threshold"])
+    if (training_features.user_names != scoring_features.user_names
+            or training_features.item_names != scoring_features.item_names):
+        raise ValueError("Training/scoring feature vocabularies differ.")
+    user_features, features = training_features.users, training_features.items
+    user_feature_names, item_feature_names = training_features.user_names, training_features.item_names
+    fit = fit.merge(users, on="user_id", validate="many_to_one").merge(movies, on="movie_id", validate="many_to_one")
+    explicit_fit = csr_matrix((fit.rating.to_numpy(dtype="float32"), (fit.user_index, fit.movie_index)),
+                               shape=interactions.shape)
+    if loss == "logistic":
+        interactions = build_logistic_interactions(explicit_fit, config["relevance_threshold"])
+    else:
+        interactions = explicit_fit.copy()
+        interactions.data = (interactions.data >= config["relevance_threshold"]).astype("float32")
+        interactions.eliminate_zeros()
+    print(f'LightFM {loss}: {int((interactions.data > 0).sum()):,} fit positives, '
+          f'{int((interactions.data < 0).sum()):,} fit negatives; '
+          f'{len(history):,} separate train events for feature statistics.', flush=True)
+    print(f"Content/history features: {user_features.shape[1]} user, {features.shape[1]} movie; "
+          "no user/movie ID embeddings.", flush=True)
     movie_ids, user_ids = movies.movie_id.to_numpy(), users.user_id.to_numpy()
     validation = pd.read_json(processed_dir / "validation_contexts.jsonl", lines=True)
     table_dir, model_dir = output_dir / "tables", output_dir / "models" / "lightfm"
     table_dir.mkdir(parents=True, exist_ok=True)
+    previous_path = table_dir / "lightfm_run.json"
+    previous = json.loads(previous_path.read_text(encoding="utf-8")) if previous_path.is_file() else None
+    if previous and any(checksums[key] != previous["input_sha256"][key]
+                        for key in checksums.keys() & previous["input_sha256"].keys()):
+        previous = None
     # Verify a saved baseline uses identical inputs before creating a comparison.
     baseline_path = table_dir / "itemcf_run.json"
     baseline = json.loads(baseline_path.read_text(encoding="utf-8")) if baseline_path.is_file() else None
@@ -65,31 +110,39 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
 
     trials, best, best_key = [], None, None
     started = perf_counter()
-    for mode, dimensions, alpha in itertools.product(["identity", "identity+genres"], components, alphas):
-        features = build_item_features(len(movies), genres if mode == "identity+genres" else None)
+    for dimensions, alpha in itertools.product(components, alphas):
         engine = LightFM(no_components=dimensions, loss=loss, learning_rate=0.05,
                          user_alpha=alpha, item_alpha=alpha, random_state=seed, max_sampled=10)
         trained, fit_seconds = 0, 0.0
         for checkpoint in epochs:
-            print(f'Training {mode}, dim={dimensions}, alpha={alpha:g}, epochs={trained}->{checkpoint}', flush=True)
+            print(f'Training metadata, dim={dimensions}, alpha={alpha:g}, epochs={trained}->{checkpoint}', flush=True)
             start = perf_counter()
-            engine.fit_partial(interactions, item_features=features, epochs=checkpoint - trained, num_threads=1)
+            engine.fit_partial(interactions, user_features=user_features, item_features=features,
+                               epochs=checkpoint - trained, num_threads=1)
             fit_seconds += perf_counter() - start
             trained = checkpoint
-            model = LightFMRecommender.from_fitted(engine, features, user_ids)
+            model = LightFMRecommender.from_fitted(engine, scoring_features.items, user_ids,
+                                                    user_features=scoring_features.users)
             metrics, _ = evaluate_ranking(model.score_tokens, validation, movie_ids)
-            trial = {"loss": loss, "item_features": mode, "no_components": dimensions, "alpha": alpha,
+            trial = {"loss": loss, "user_features": "demographics+genre_preferences+decade_preferences",
+                     "item_features": "genres+decade+popularity+smoothed_ratings",
+                     "no_components": dimensions, "alpha": alpha,
                      "epochs": checkpoint, "fit_seconds": fit_seconds, **metrics}
             trials.append(trial)
             pd.DataFrame(trials).to_csv(table_dir / "lightfm_search_progress.csv", index=False)
             # Smaller models/earlier checkpoints break equal validation scores.
-            key = (metrics["NDCG@10"], metrics["Recall@10"], -dimensions, -checkpoint, -alpha, mode == "identity")
+            key = (metrics["NDCG@10"], metrics["Recall@10"], -dimensions, -checkpoint, -alpha)
             if best_key is None or key > best_key:
                 best, best_key = (model, trial.copy()), key
                 model.save(model_dir / "search_best")
+                np.savez_compressed(model_dir / "search_best" / "feature_embeddings.npz",
+                                    user_feature_embeddings=engine.user_embeddings,
+                                    user_feature_biases=engine.user_biases,
+                                    item_feature_embeddings=engine.item_embeddings,
+                                    item_feature_biases=engine.item_biases)
                 (model_dir / "search_best" / "validation.json").write_text(
                     json.dumps(trial, indent=2), encoding="utf-8")
-            print(f'{mode}, dim={dimensions}, alpha={alpha:g}, epoch={checkpoint}: '
+            print(f'Metadata, dim={dimensions}, alpha={alpha:g}, epoch={checkpoint}: '
                   f'NDCG@10={metrics["NDCG@10"]:.6f}, Recall@10={metrics["Recall@10"]:.6f}', flush=True)
 
     model, selected = best
@@ -97,9 +150,11 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
     test = pd.read_json(processed_dir / "test_contexts.jsonl", lines=True)
     test_metrics, per_user = evaluate_ranking(model.score_tokens, test, movie_ids)
     model.save(model_dir)
+    shutil.copyfile(model_dir / "search_best" / "feature_embeddings.npz", model_dir / "feature_embeddings.npz")
     per_user.to_csv(model_dir / "test_per_user.csv", index=False)
     search = pd.DataFrame(trials)
-    parameters = {name: selected[name] for name in ["loss", "item_features", "no_components", "alpha", "epochs"]}
+    parameters = {name: selected[name] for name in
+                  ["loss", "user_features", "item_features", "no_components", "alpha", "epochs"]}
     search["selected"] = np.logical_and.reduce([search[name].eq(value) for name, value in parameters.items()])
     search.to_csv(table_dir / "lightfm_validation_search.csv", index=False)
     validation_metrics = {name: selected[name] for name in test_metrics}
@@ -118,12 +173,27 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
     run = {
         "algorithm": "LightFM", "loss": loss, "selected_parameters": parameters,
         "grid": {"no_components": components, "alpha": alphas, "epochs": epochs,
-                 "item_features": ["identity", "identity+genres"]},
+                 "user_features": [parameters["user_features"]], "item_features": [parameters["item_features"]]},
         "selection_metric": "NDCG@10 on validation",
-        "tie_break": "Recall@10, smaller dimensions, earlier epochs, smaller alpha, identity features",
+        "tie_break": "Recall@10, smaller dimensions, earlier epochs, smaller alpha",
         "random_seed": seed, "num_threads": 1, "learning_rate": 0.05,
         "max_sampled": 10 if loss == "warp" else None,
-        "feature_encoding": "User identity; item identity optionally concatenated with genres, row L1 normalized",
+        "feature_encoding": "Demographic one-hot, positive-history genre/decade distributions; movie genre/decade, "
+                            "log popularity and smoothed mean/positive ratio; row L1 normalization; no identity features",
+        "user_feature_names": user_feature_names, "item_feature_names": item_feature_names,
+        "user_identity_features": False, "item_identity_features": False,
+        "user_metadata_sha256": user_metadata_sha256, "movie_metadata_sha256": movie_metadata_sha256,
+        "feature_history_rows": len(history), "parameter_fit_rows_before_neutral_filter": len(fit),
+        "statistics_protocol": "Per-user timestamp-group nearest-half split inside train: prefix for feature statistics, "
+                               "disjoint suffix labels for parameter fitting. Validation/test representations use full "
+                               "train statistics only. Per-user chronology, not a global calendar split.",
+        "smoothing_prior_weight": 20.0,
+        "statistic_encoding": "Positive=rating >= relevance_threshold; each profile block L1 normalized; "
+                              "log1p(movie count)/maximum log1p count; mean rating with 20 global-mean prior "
+                              "observations divided by 5; high-rating ratio with 20 global-rate prior observations",
+        "unavailable_metadata": ["movie duration", "plot text"],
+        "representation_constraint": "Identical metadata yields identical vectors and biases; seen-item filtering "
+                                     "can still yield different recommendation lists",
         "training_feedback": ("Train rating >= relevance_threshold: +1; rating 1/2: -1; rating 3 and unknown omitted"
                               if loss == "logistic" else "Training ratings >= relevance_threshold only"),
         "training_positive_count": int((interactions.data > 0).sum()),
@@ -148,5 +218,11 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
     payload = json.dumps(run, indent=2)
     (model_dir / "run.json").write_text(payload, encoding="utf-8")
     (table_dir / "lightfm_run.json").write_text(payload, encoding="utf-8")
+    if previous:
+        compared = [{"feature_set": "previous", "split": stage, **previous[f"{stage}_metrics"]}
+                    for stage in ("validation", "test")]
+        compared += [{"feature_set": "enriched", "split": stage, **run[f"{stage}_metrics"]}
+                     for stage in ("validation", "test")]
+        pd.DataFrame(compared).to_csv(table_dir / "lightfm_feature_comparison.csv", index=False)
     write_comparison(table_dir)
     print(results.to_string(index=False), flush=True)

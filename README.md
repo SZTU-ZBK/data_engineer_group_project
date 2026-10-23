@@ -43,6 +43,7 @@ src/data.py                         数据读取、质量检查、清洗、时�
 src/features.py                     训练期特征、稀疏矩阵、行为序列与共享评估上下文
 src/models/item_cf.py               正反馈 ItemCF、模型保存与恢复
 src/models/lightfm.py               LightFM 特征编码、向量导出与推荐评分
+src/lightfm_features.py             类型/年代偏好、电影统计特征与独立的特征历史划分
 src/models/lrurec.py                LRURec 线性递推模型、序列评分与保存恢复
 src/sequences.py                    下一部电影训练窗口与序列补齐
 src/train_lrurec.py                 LRURec 训练、验证选轮数与共享评估
@@ -202,26 +203,37 @@ Top-5/10 是本项目的实验设置，课程硬性要求为推荐至少 5 部�
 默认使用官方 `lightfm==1.17` 的 **logistic 损失**，避免本机 Windows WARP/BPR 负采样扩展的崩溃。
 训练标签只根据训练评分构造：**≥4 分为 +1、1–2 分为 -1，3 分和未评分项不参与训练**。
 不采样未评分项作为负例，不读取留出标签；评估正例仍按原规则定义为评分 ≥4。
-用户使用 ID 特征，电影比较“仅 ID”和“ID＋类型”两种配置；类型特征与电影身份特征拼接后按行 L1 归一化。
-两种配置和不同损失均属于同一种 LightFM 算法，但训练目标不同，结果中记录实际使用的损失和标签规则。
+LightFM 不使用身份 embedding。用户输入为性别、年龄段、职业（30 类），以及历史高分电影的类型分布（18 维）和年代分布（10 维），共 58 个特征。
+电影输入为类型（18 类）、上映年代（10 类），以及训练历史热度、平滑平均评分和平滑高分比例，共 31 个特征。
+年代从标题末尾年份提取；热度采用缩放后的 `log(1+评分次数)`，口碑以 20 条历史总体均值/高分比例的先验观测平滑。
+类别与数值特征都参与向量的加权组合；用户三个特征块分别归一化后拼接，最终用户/电影特征按行 L1 归一化。
+用户 ID 和电影 ID 仅用于对齐交互矩阵，不建立身份 embedding；特征词表仅来自训练用户与训练目录。
+MovieLens 1M 没有电影时长和剧情文本，本实现使用现有属性及历史评分派生的信息。
+
+为避免目标评分参与自身统计，训练集内部按用户时间戳组约 50%/50% 划分：前段构造特征，后段用于参数学习；同时间戳不跨段，只有一个时间戳组的用户仅提供特征历史。
+验证和测试时用完整训练集重建特征，再由已训练的特征向量组合得到用户/电影表示；不使用验证或测试评分构造统计，也不更新模型参数。
+该方案按用户保持先后关系，沿用项目现有的非全局日历划分。与此前属性版本的对比同时涉及特征和参数拟合样本数量的变化。
 
 ```bash
 python train.py --model lightfm --loss logistic
 python recommend.py --model lightfm --user-id 1 --top-k 5
 ```
 
-默认比较维度 `[32, 64]`、正则化 `[1e-6, 1e-4]`、训练轮数检查点 `[10, 20]`，共 16 个验证配置。
+默认比较维度 `[32, 64]`、正则化 `[1e-6, 1e-4]`、训练轮数检查点 `[10, 20]`，共 8 个验证配置。
 固定随机种子 42、单线程，继续使用验证 NDCG@10 选参，选定后评估测试集；不使用测试结果调参。
-可用 `--components 32 --epochs 5 10 --alpha 1e-6 --seed 42` 缩小为 4 个验证配置，先确认完整流程。
-当前保存结果来自这个小网格，并非默认 16 配置搜索的完整结果。每个检查点的指标即时写入
+可用 `--components 32 --epochs 5 10 --alpha 1e-6 --seed 42` 缩小为 2 个验证配置，先确认完整流程。
+当前 LightFM 保存结果来自这个小网格。每个检查点的指标即时写入
 `lightfm_search_progress.csv`，当前最佳向量另存到 `outputs/models/lightfm/search_best/`，以保留中断前的进展。
 
-候选、评估用户及指标与 ItemCF 完全复用。LightFM 的用户向量只由训练集学习，测试时验证历史用于过滤已评分电影，不更新用户向量。
+候选、评估用户及指标与 ItemCF 完全复用。LightFM 的参数及统计特征只来自训练集，测试时验证历史用于过滤已评分电影，不更新用户向量。
 打开 `notebooks/03_lightfm.ipynb` 查看选定配置、算法指标比较，并修改用户 ID 比较两种算法推荐的电影标题与类型。
 
 结果位于 `outputs/tables/lightfm_metrics.csv`、`lightfm_validation_search.csv`、`lightfm_run.json`、
 `lightfm_recommendation_examples.csv` 和 `comparison_metrics.csv`。
 选定模型的向量及逐用户测试结果保存到 `outputs/models/lightfm/`（不纳入 Git）。导出的向量用于推理，不包含继续训练所需的优化器状态。
+`feature_embeddings.npz` 保存实际学习的属性 embedding 与偏置，特征列名在 `lightfm_run.json` 中。
+`representations.npz` 保存按属性组合后的用户/电影表示，以便推荐时直接查表；这些查表行不是独立学习的 ID 参数。
+`lightfm_feature_comparison.csv` 对比同一数据下此前版本和本次扩充特征版本的验证/测试指标；当前最佳权重仍由验证集选择。
 
 可选 `--loss warp` 使用正反馈与内部负采样训练。当前 Windows 包存在可能导致负电影索引的随机数转换代码，
 WARP 入口检测到时会拒绝运行；logistic 不调用该采样函数，无需重编译。

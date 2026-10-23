@@ -25,6 +25,14 @@ def load_movie_metadata() -> pd.DataFrame:
     )
 
 
+def load_user_metadata() -> pd.DataFrame:
+    return pd.read_csv(
+        resolve_data_dir() / "users.dat", sep="::", engine="python", header=None,
+        names=list(SCHEMAS["users"]), dtype=SCHEMAS["users"], encoding="latin-1",
+        keep_default_na=False, na_values=[""],
+    )
+
+
 def recommendation_table(model, context, movie_ids, movies: pd.DataFrame, k=10) -> pd.DataFrame:
     """Rank unseen items; ItemCF additionally explains the strongest history edge."""
     movie_ids = np.asarray(movie_ids, dtype="int64")

@@ -1,31 +1,31 @@
 user_id,rank,movie_id,title,genres,score
-1,1,1198,Raiders of the Lost Ark (1981),Action|Adventure,4.884393215179443
-1,2,318,"Shawshank Redemption, The (1994)",Drama,4.7714009284973145
-1,3,858,"Godfather, The (1972)",Action|Crime|Drama,4.55349588394165
-1,4,1196,Star Wars: Episode V - The Empire Strikes Back (1980),Action|Adventure|Drama|Sci-Fi|War,4.524862766265869
-1,5,457,"Fugitive, The (1993)",Action|Thriller,4.471138954162598
-1,6,912,Casablanca (1942),Drama|Romance|War,4.441418170928955
-1,7,1259,Stand by Me (1986),Adventure|Comedy|Drama,4.418616771697998
-1,8,589,Terminator 2: Judgment Day (1991),Action|Sci-Fi|Thriller,4.388679504394531
-1,9,1036,Die Hard (1988),Action|Thriller,4.338474273681641
-1,10,1240,"Terminator, The (1984)",Action|Sci-Fi|Thriller,4.333547592163086
-2,1,2762,"Sixth Sense, The (1999)",Thriller,3.246311664581299
-2,2,527,Schindler's List (1993),Drama|War,3.1497554779052734
-2,3,1270,Back to the Future (1985),Comedy|Sci-Fi,3.097468852996826
-2,4,150,Apollo 13 (1995),Drama,3.054276466369629
-2,5,1,Toy Story (1995),Animation|Children's|Comedy,3.016420364379883
-2,6,260,Star Wars: Episode IV - A New Hope (1977),Action|Adventure|Fantasy|Sci-Fi,2.9733004570007324
-2,7,1036,Die Hard (1988),Action|Thriller,2.923231601715088
-2,8,1262,"Great Escape, The (1963)",Adventure|War,2.8643295764923096
-2,9,1291,Indiana Jones and the Last Crusade (1989),Action|Adventure,2.8512821197509766
-2,10,1704,Good Will Hunting (1997),Drama,2.8318567276000977
-3,1,318,"Shawshank Redemption, The (1994)",Drama,3.9985578060150146
-3,2,110,Braveheart (1995),Action|Drama|War,3.9843297004699707
-3,3,2028,Saving Private Ryan (1998),Action|Drama|War,3.943880558013916
-3,4,457,"Fugitive, The (1993)",Action|Thriller,3.892845869064331
-3,5,527,Schindler's List (1993),Drama|War,3.8097779750823975
-3,6,1036,Die Hard (1988),Action|Thriller,3.809481382369995
-3,7,2000,Lethal Weapon (1987),Action|Comedy|Crime|Drama,3.795802354812622
-3,8,2762,"Sixth Sense, The (1999)",Thriller,3.71732497215271
-3,9,589,Terminator 2: Judgment Day (1991),Action|Sci-Fi|Thriller,3.636885166168213
-3,10,1240,"Terminator, The (1984)",Action|Sci-Fi|Thriller,3.580453634262085
+1,1,923,Citizen Kane (1941),Drama,3.6106293201446533
+1,2,953,It's a Wonderful Life (1946),Drama,3.4962515830993652
+1,3,913,"Maltese Falcon, The (1941)",Film-Noir|Mystery,3.4922168254852295
+1,4,908,North by Northwest (1959),Drama|Thriller,3.4901955127716064
+1,5,1203,12 Angry Men (1957),Drama,3.4737279415130615
+1,6,3435,Double Indemnity (1944),Crime|Film-Noir,3.440361738204956
+1,7,3089,"Bicycle Thief, The (Ladri di biciclette) (1948)",Drama,3.4152491092681885
+1,8,912,Casablanca (1942),Drama|Romance|War,3.402222156524658
+1,9,1250,"Bridge on the River Kwai, The (1957)",Drama|War,3.398667812347412
+1,10,904,Rear Window (1954),Mystery|Thriller,3.3831682205200195
+2,1,913,"Maltese Falcon, The (1941)",Film-Noir|Mystery,4.24528694152832
+2,2,908,North by Northwest (1959),Drama|Thriller,4.215832233428955
+2,3,904,Rear Window (1954),Mystery|Thriller,4.190999984741211
+2,4,3435,Double Indemnity (1944),Crime|Film-Noir,4.188509464263916
+2,5,923,Citizen Kane (1941),Drama,4.177149772644043
+2,6,2019,Seven Samurai (The Magnificent Seven) (Shichinin no samurai) (1954),Action|Drama,4.076050758361816
+2,7,912,Casablanca (1942),Drama|Romance|War,4.044559478759766
+2,8,1284,"Big Sleep, The (1946)",Film-Noir|Mystery,4.028582572937012
+2,9,922,Sunset Blvd. (a.k.a. Sunset Boulevard) (1950),Film-Noir,4.017876625061035
+2,10,1250,"Bridge on the River Kwai, The (1957)",Drama|War,4.015576362609863
+3,1,904,Rear Window (1954),Mystery|Thriller,3.835076332092285
+3,2,858,"Godfather, The (1972)",Action|Crime|Drama,3.8266689777374268
+3,3,908,North by Northwest (1959),Drama|Thriller,3.757542133331299
+3,4,913,"Maltese Falcon, The (1941)",Film-Noir|Mystery,3.754767656326294
+3,5,3435,Double Indemnity (1944),Crime|Film-Noir,3.732013463973999
+3,6,2019,Seven Samurai (The Magnificent Seven) (Shichinin no samurai) (1954),Action|Drama,3.7271721363067627
+3,7,50,"Usual Suspects, The (1995)",Crime|Thriller,3.6406943798065186
+3,8,2762,"Sixth Sense, The (1999)",Thriller,3.632545232772827
+3,9,1193,One Flew Over the Cuckoo's Nest (1975),Drama,3.614198684692383
+3,10,1221,"Godfather: Part II, The (1974)",Action|Crime|Drama,3.612722635269165

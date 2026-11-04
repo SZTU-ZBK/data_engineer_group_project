@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix
 
-from src.lightfm_features import build_enriched_features, split_feature_history
+from src.lightfm_features import add_identity_features, build_enriched_features, split_feature_history
 from src.models.lightfm import LightFMRecommender
 
 
@@ -65,25 +65,45 @@ class EnrichedFeatureTests(unittest.TestCase):
         self.assertGreater(values[2, features.item_names.index("history_smoothed_mean_rating")], 0)
         pd.testing.assert_frame_equal(history, original)
 
+    def test_identity_columns_preserve_content_and_share_weight_equally(self):
+        content = self.build()
+        hybrid = add_identity_features(content, self.users.user_id, self.movies.movie_id)
+        u, m = hybrid.users.toarray(), hybrid.items.toarray()
+        self.assertEqual(u.shape, (2, 9))
+        self.assertEqual(m.shape, (3, 10))
+        np.testing.assert_allclose(u[:, :2], np.eye(2) * 0.5, atol=1e-6)
+        np.testing.assert_allclose(m[:, :3], np.eye(3) * 0.5, atol=1e-6)
+        np.testing.assert_allclose(u[:, 2:], content.users.toarray() * 0.5, atol=1e-6)
+        np.testing.assert_allclose(m[:, 3:], content.items.toarray() * 0.5, atol=1e-6)
+        self.assertEqual(hybrid.user_names[:2], ["user_id:10", "user_id:30"])
+        self.assertEqual(hybrid.item_names[:3], ["movie_id:11", "movie_id:22", "movie_id:33"])
+        self.assertNotIn("movie_id:99", hybrid.item_names)
+        with self.assertRaises(ValueError):
+            add_identity_features(content, [10, 10], self.movies.movie_id)
+
     def test_native_prediction_matches_export_with_inference_history_features(self):
         from lightfm import LightFM
 
-        training = self.build(self.history.loc[self.history.movie_id.ne(33)])
-        scoring = self.build()
-        self.assertEqual(training.user_names, scoring.user_names)
-        self.assertEqual(training.item_names, scoring.item_names)
-        engine = LightFM(no_components=4, loss="logistic", random_state=42)
-        interactions = csr_matrix([[0, -1, 0], [1, 0, 0]], dtype="float32")
-        engine.fit(interactions, user_features=training.users, item_features=training.items,
-                   epochs=2, num_threads=1)
-        model = LightFMRecommender.from_fitted(engine, scoring.items, self.users.user_id,
-                                               user_features=scoring.users)
-        self.assertEqual(engine.user_embeddings.shape, (7, 4))
-        self.assertEqual(engine.item_embeddings.shape, (7, 4))
-        for index, user in enumerate(self.users.user_id):
-            expected = engine.predict(index, np.arange(3), user_features=scoring.users,
-                                      item_features=scoring.items, num_threads=1)
-            np.testing.assert_allclose(model.score_tokens(user, []), expected, atol=1e-6, rtol=1e-5)
+        for identities in (False, True):
+            training = self.build(self.history.loc[self.history.movie_id.ne(33)])
+            scoring = self.build()
+            if identities:
+                training = add_identity_features(training, self.users.user_id, self.movies.movie_id)
+                scoring = add_identity_features(scoring, self.users.user_id, self.movies.movie_id)
+            self.assertEqual(training.user_names, scoring.user_names)
+            self.assertEqual(training.item_names, scoring.item_names)
+            engine = LightFM(no_components=4, loss="logistic", random_state=42)
+            interactions = csr_matrix([[0, -1, 0], [1, 0, 0]], dtype="float32")
+            engine.fit(interactions, user_features=training.users, item_features=training.items,
+                       epochs=2, num_threads=1)
+            model = LightFMRecommender.from_fitted(engine, scoring.items, self.users.user_id,
+                                                   user_features=scoring.users)
+            self.assertEqual(engine.user_embeddings.shape, (len(training.user_names), 4))
+            self.assertEqual(engine.item_embeddings.shape, (len(training.item_names), 4))
+            for index, user in enumerate(self.users.user_id):
+                expected = engine.predict(index, np.arange(3), user_features=scoring.users,
+                                          item_features=scoring.items, num_threads=1)
+                np.testing.assert_allclose(model.score_tokens(user, []), expected, atol=1e-6, rtol=1e-5)
 
 
 if __name__ == "__main__":

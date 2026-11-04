@@ -1,31 +1,31 @@
 user_id,rank,movie_id,title,genres,score
-1,1,923,Citizen Kane (1941),Drama,3.6106293201446533
-1,2,953,It's a Wonderful Life (1946),Drama,3.4962515830993652
-1,3,913,"Maltese Falcon, The (1941)",Film-Noir|Mystery,3.4922168254852295
-1,4,908,North by Northwest (1959),Drama|Thriller,3.4901955127716064
-1,5,1203,12 Angry Men (1957),Drama,3.4737279415130615
-1,6,3435,Double Indemnity (1944),Crime|Film-Noir,3.440361738204956
-1,7,3089,"Bicycle Thief, The (Ladri di biciclette) (1948)",Drama,3.4152491092681885
-1,8,912,Casablanca (1942),Drama|Romance|War,3.402222156524658
-1,9,1250,"Bridge on the River Kwai, The (1957)",Drama|War,3.398667812347412
-1,10,904,Rear Window (1954),Mystery|Thriller,3.3831682205200195
-2,1,913,"Maltese Falcon, The (1941)",Film-Noir|Mystery,4.24528694152832
-2,2,908,North by Northwest (1959),Drama|Thriller,4.215832233428955
-2,3,904,Rear Window (1954),Mystery|Thriller,4.190999984741211
-2,4,3435,Double Indemnity (1944),Crime|Film-Noir,4.188509464263916
-2,5,923,Citizen Kane (1941),Drama,4.177149772644043
-2,6,2019,Seven Samurai (The Magnificent Seven) (Shichinin no samurai) (1954),Action|Drama,4.076050758361816
-2,7,912,Casablanca (1942),Drama|Romance|War,4.044559478759766
-2,8,1284,"Big Sleep, The (1946)",Film-Noir|Mystery,4.028582572937012
-2,9,922,Sunset Blvd. (a.k.a. Sunset Boulevard) (1950),Film-Noir,4.017876625061035
-2,10,1250,"Bridge on the River Kwai, The (1957)",Drama|War,4.015576362609863
-3,1,904,Rear Window (1954),Mystery|Thriller,3.835076332092285
-3,2,858,"Godfather, The (1972)",Action|Crime|Drama,3.8266689777374268
-3,3,908,North by Northwest (1959),Drama|Thriller,3.757542133331299
-3,4,913,"Maltese Falcon, The (1941)",Film-Noir|Mystery,3.754767656326294
-3,5,3435,Double Indemnity (1944),Crime|Film-Noir,3.732013463973999
-3,6,2019,Seven Samurai (The Magnificent Seven) (Shichinin no samurai) (1954),Action|Drama,3.7271721363067627
-3,7,50,"Usual Suspects, The (1995)",Crime|Thriller,3.6406943798065186
-3,8,2762,"Sixth Sense, The (1999)",Thriller,3.632545232772827
-3,9,1193,One Flew Over the Cuckoo's Nest (1975),Drama,3.614198684692383
-3,10,1221,"Godfather: Part II, The (1974)",Action|Crime|Drama,3.612722635269165
+1,1,318,"Shawshank Redemption, The (1994)",Drama,4.830586910247803
+1,2,1262,"Great Escape, The (1963)",Adventure|War,4.775041580200195
+1,3,3468,"Hustler, The (1961)",Drama,4.757104873657227
+1,4,904,Rear Window (1954),Mystery|Thriller,4.749217510223389
+1,5,858,"Godfather, The (1972)",Action|Crime|Drama,4.747776508331299
+1,6,593,"Silence of the Lambs, The (1991)",Drama|Thriller,4.7032790184021
+1,7,1242,Glory (1989),Action|Drama|War,4.666074752807617
+1,8,1198,Raiders of the Lost Ark (1981),Action|Adventure,4.657382011413574
+1,9,1148,"Wrong Trousers, The (1993)",Animation|Comedy,4.518964767456055
+1,10,922,Sunset Blvd. (a.k.a. Sunset Boulevard) (1950),Film-Noir,4.504909515380859
+2,1,1262,"Great Escape, The (1963)",Adventure|War,5.000651836395264
+2,2,904,Rear Window (1954),Mystery|Thriller,4.941274642944336
+2,3,858,"Godfather, The (1972)",Action|Crime|Drama,4.86163854598999
+2,4,922,Sunset Blvd. (a.k.a. Sunset Boulevard) (1950),Film-Noir,4.71641206741333
+2,5,1242,Glory (1989),Action|Drama|War,4.703579425811768
+2,6,3435,Double Indemnity (1944),Crime|Film-Noir,4.7011518478393555
+2,7,1269,Arsenic and Old Lace (1944),Comedy|Mystery|Thriller,4.6074604988098145
+2,8,745,"Close Shave, A (1995)",Animation|Comedy|Thriller,4.550605297088623
+2,9,942,Laura (1944),Crime|Film-Noir|Mystery,4.543997287750244
+2,10,1250,"Bridge on the River Kwai, The (1957)",Drama|War,4.543233394622803
+3,1,1262,"Great Escape, The (1963)",Adventure|War,5.1524271965026855
+3,2,904,Rear Window (1954),Mystery|Thriller,5.102628707885742
+3,3,3468,"Hustler, The (1961)",Drama,5.059170722961426
+3,4,858,"Godfather, The (1972)",Action|Crime|Drama,5.05850076675415
+3,5,318,"Shawshank Redemption, The (1994)",Drama,5.057632923126221
+3,6,1242,Glory (1989),Action|Drama|War,4.937797546386719
+3,7,922,Sunset Blvd. (a.k.a. Sunset Boulevard) (1950),Film-Noir,4.85561466217041
+3,8,3435,Double Indemnity (1944),Crime|Film-Noir,4.844090461730957
+3,9,745,"Close Shave, A (1995)",Animation|Comedy|Thriller,4.802804946899414
+3,10,1148,"Wrong Trousers, The (1993)",Animation|Comedy,4.794566631317139

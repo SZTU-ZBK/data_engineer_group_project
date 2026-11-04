@@ -130,6 +130,8 @@ def main():
     parser.add_argument("--alpha", nargs="+", type=float, default=[1e-6, 1e-4])
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--loss", choices=["logistic", "warp"], default="logistic")
+    parser.add_argument("--no-identity-features", action="store_true",
+                        help="LightFM: disable user/movie ID features for a content-only comparison")
     lru_schedule = parser.add_mutually_exclusive_group()
     lru_schedule.add_argument("--lru-epochs", nargs="+", type=int, default=[1, 3], help="LRURec epoch checkpoints")
     lru_schedule.add_argument("--max-epochs", type=int, help="LRURec: train this many epochs and validate every epoch")
@@ -164,7 +166,7 @@ def main():
     elif args.model == "lightfm":
         from src.train_lightfm import run_lightfm
         run_lightfm(args.processed_dir, args.output_dir, args.components, args.epochs,
-                    args.alpha, args.seed, loss=args.loss)
+                    args.alpha, args.seed, loss=args.loss, identity_features=not args.no_identity_features)
     else:
         run_itemcf(args.processed_dir, args.output_dir, args.neighbors, args.shrinkage)
 

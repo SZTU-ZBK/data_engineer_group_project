@@ -1,10 +1,10 @@
-"""Attribute/history features without identity embeddings or target-row statistics."""
+"""Attribute/history features with optional identity columns and isolated statistics."""
 
 from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
-from scipy.sparse import csr_matrix, hstack
+from scipy.sparse import csr_matrix, hstack, identity
 
 from src.models.lightfm import build_item_features, build_user_features
 
@@ -22,6 +22,24 @@ def normalize_rows(matrix):
     totals = np.asarray(matrix.sum(axis=1)).ravel()
     inverse = np.divide(1.0, totals, out=np.zeros_like(totals), where=totals > 0)
     return matrix.multiply(inverse[:, None]).tocsr()
+
+
+def add_identity_features(content, user_ids, movie_ids):
+    """Give identity and normalized content blocks half the total feature weight each.
+
+    Concatenation happens in sparse feature space. LightFM sums the embeddings
+    of active columns, so the final representation still has no_components dims.
+    """
+    user_ids, movie_ids = list(user_ids), list(movie_ids)
+    if (len(user_ids) != content.users.shape[0] or len(movie_ids) != content.items.shape[0]
+            or len(set(user_ids)) != len(user_ids) or len(set(movie_ids)) != len(movie_ids)):
+        raise ValueError("Unique training IDs must match content-feature rows.")
+    return ContentFeatures(
+        normalize_rows(hstack([identity(len(user_ids), format="csr", dtype="float32"), content.users])),
+        normalize_rows(hstack([identity(len(movie_ids), format="csr", dtype="float32"), content.items])),
+        [*[f"user_id:{user}" for user in user_ids], *content.user_names],
+        [*[f"movie_id:{movie}" for movie in movie_ids], *content.item_names],
+    )
 
 
 def split_feature_history(train):

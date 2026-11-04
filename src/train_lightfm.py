@@ -14,13 +14,25 @@ from scipy.sparse import csr_matrix, load_npz
 
 from src.data import resolve_data_dir
 from src.evaluate import evaluate_ranking, write_comparison
-from src.lightfm_features import build_enriched_features, split_feature_history
+from src.lightfm_features import add_identity_features, build_enriched_features, split_feature_history
+from src.lightfm_diagnostics import observed_logistic_loss
 from src.models.lightfm import (LightFMRecommender,
                                build_logistic_interactions, check_training_backend)
 from src.recommend import file_sha256, load_movie_metadata, load_user_metadata, recommendation_table
 
 
-def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, loss="logistic"):
+def save_checkpoint(model, engine, directory, trial):
+    model.save(directory)
+    np.savez_compressed(directory / "feature_embeddings.npz",
+                        user_feature_embeddings=engine.user_embeddings,
+                        user_feature_biases=engine.user_biases,
+                        item_feature_embeddings=engine.item_embeddings,
+                        item_feature_biases=engine.item_biases)
+    (directory / "validation.json").write_text(json.dumps(trial, indent=2), encoding="utf-8")
+
+
+def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, loss="logistic",
+                identity_features=True):
     check_training_backend(loss)
     import lightfm
     from lightfm import LightFM
@@ -32,7 +44,7 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
     required = ["config.json", "user_mapping.csv", "movie_mapping.csv", "positive_interactions.npz",
                 "genre_features.npz", "genre_names.json", "train.csv", "validation_contexts.jsonl", "test_contexts.jsonl"]
     if loss == "logistic":
-        required.append("explicit_ratings.npz")
+        required += ["explicit_ratings.npz", "validation.csv"]
     missing = [name for name in required if not (processed_dir / name).is_file()]
     if missing:
         raise FileNotFoundError(f"Run 01_data_analysis.ipynb first: {missing}")
@@ -74,6 +86,9 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
                                                 genres, genre_names, history, config["relevance_threshold"])
     scoring_features = build_enriched_features(users, user_metadata, movies, movie_metadata,
                                                genres, genre_names, train, config["relevance_threshold"])
+    if identity_features:
+        training_features = add_identity_features(training_features, users.user_id, movies.movie_id)
+        scoring_features = add_identity_features(scoring_features, users.user_id, movies.movie_id)
     if (training_features.user_names != scoring_features.user_names
             or training_features.item_names != scoring_features.item_names):
         raise ValueError("Training/scoring feature vocabularies differ.")
@@ -92,9 +107,20 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
           f'{int((interactions.data < 0).sum()):,} fit negatives; '
           f'{len(history):,} separate train events for feature statistics.', flush=True)
     print(f"Content/history features: {user_features.shape[1]} user, {features.shape[1]} movie; "
-          "no user/movie ID embeddings.", flush=True)
+          f"identity embeddings={identity_features}.", flush=True)
     movie_ids, user_ids = movies.movie_id.to_numpy(), users.user_id.to_numpy()
     validation = pd.read_json(processed_dir / "validation_contexts.jsonl", lines=True)
+    validation_feedback = None
+    if loss == "logistic":
+        observed = pd.read_csv(processed_dir / "validation.csv")
+        observed = observed.loc[observed.user_id.isin(validation.loc[validation.eligible, "user_id"])]
+        observed = observed.merge(users, on="user_id", validate="many_to_one").merge(
+            movies, on="movie_id", validate="many_to_one")
+        explicit_validation = csr_matrix((observed.rating.to_numpy(dtype="float32"),
+                                          (observed.user_index, observed.movie_index)), shape=interactions.shape)
+        validation_feedback = build_logistic_interactions(explicit_validation, config["relevance_threshold"])
+        print(f'Loss evaluation: {interactions.nnz:,} train labels, '
+              f'{validation_feedback.nnz:,} validation labels; no sampled negatives.', flush=True)
     table_dir, model_dir = output_dir / "tables", output_dir / "models" / "lightfm"
     table_dir.mkdir(parents=True, exist_ok=True)
     previous_path = table_dir / "lightfm_run.json"
@@ -108,7 +134,7 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
     if baseline and any(checksums[name] != digest for name, digest in baseline["input_sha256"].items()):
         raise ValueError("ItemCF used different inputs. Rerun it before comparing models.")
 
-    trials, best, best_key = [], None, None
+    trials, best, best_key, dimension_best = [], None, None, {}
     started = perf_counter()
     for dimensions, alpha in itertools.product(components, alphas):
         engine = LightFM(no_components=dimensions, loss=loss, learning_rate=0.05,
@@ -124,26 +150,35 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
             model = LightFMRecommender.from_fitted(engine, scoring_features.items, user_ids,
                                                     user_features=scoring_features.users)
             metrics, _ = evaluate_ranking(model.score_tokens, validation, movie_ids)
-            trial = {"loss": loss, "user_features": "demographics+genre_preferences+decade_preferences",
-                     "item_features": "genres+decade+popularity+smoothed_ratings",
+            losses = {}
+            if loss == "logistic":
+                fit_model = LightFMRecommender.from_fitted(engine, features, user_ids, user_features=user_features)
+                losses.update({f"train_{name}": value
+                               for name, value in observed_logistic_loss(fit_model, interactions).items()})
+                losses.update({f"validation_{name}": value
+                               for name, value in observed_logistic_loss(model, validation_feedback).items()})
+            trial = {"loss": loss,
+                     "user_features": ("id+" if identity_features else "")
+                                      + "demographics+genre_preferences+decade_preferences",
+                     "item_features": ("id+" if identity_features else "")
+                                      + "genres+decade+popularity+smoothed_ratings",
                      "no_components": dimensions, "alpha": alpha,
-                     "epochs": checkpoint, "fit_seconds": fit_seconds, **metrics}
+                     "epochs": checkpoint, "fit_seconds": fit_seconds, **losses, **metrics}
             trials.append(trial)
             pd.DataFrame(trials).to_csv(table_dir / "lightfm_search_progress.csv", index=False)
             # Smaller models/earlier checkpoints break equal validation scores.
             key = (metrics["NDCG@10"], metrics["Recall@10"], -dimensions, -checkpoint, -alpha)
+            if dimensions not in dimension_best or key > dimension_best[dimensions]:
+                dimension_best[dimensions] = key
+                save_checkpoint(model, engine, model_dir / "capacity" / str(dimensions), trial)
             if best_key is None or key > best_key:
                 best, best_key = (model, trial.copy()), key
-                model.save(model_dir / "search_best")
-                np.savez_compressed(model_dir / "search_best" / "feature_embeddings.npz",
-                                    user_feature_embeddings=engine.user_embeddings,
-                                    user_feature_biases=engine.user_biases,
-                                    item_feature_embeddings=engine.item_embeddings,
-                                    item_feature_biases=engine.item_biases)
-                (model_dir / "search_best" / "validation.json").write_text(
-                    json.dumps(trial, indent=2), encoding="utf-8")
+                save_checkpoint(model, engine, model_dir / "search_best", trial)
             print(f'Metadata, dim={dimensions}, alpha={alpha:g}, epoch={checkpoint}: '
                   f'NDCG@10={metrics["NDCG@10"]:.6f}, Recall@10={metrics["Recall@10"]:.6f}', flush=True)
+            if losses:
+                print(f'Loss: train={losses["train_loss"]:.6f}, '
+                      f'validation={losses["validation_loss"]:.6f}', flush=True)
 
     model, selected = best
     # Test labels are first loaded after the winner has been fixed.
@@ -157,6 +192,10 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
                   ["loss", "user_features", "item_features", "no_components", "alpha", "epochs"]}
     search["selected"] = np.logical_and.reduce([search[name].eq(value) for name, value in parameters.items()])
     search.to_csv(table_dir / "lightfm_validation_search.csv", index=False)
+    (search.sort_values(["NDCG@10", "Recall@10", "no_components", "epochs", "alpha"],
+                        ascending=[False, False, True, True, True])
+     .drop_duplicates("no_components").sort_values("no_components")
+     .to_csv(table_dir / "lightfm_capacity_summary.csv", index=False))
     validation_metrics = {name: selected[name] for name in test_metrics}
     results = pd.DataFrame([
         {"algorithm": "LightFM", "loss": loss, "split": "validation", **validation_metrics},
@@ -179,9 +218,11 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
         "random_seed": seed, "num_threads": 1, "learning_rate": 0.05,
         "max_sampled": 10 if loss == "warp" else None,
         "feature_encoding": "Demographic one-hot, positive-history genre/decade distributions; movie genre/decade, "
-                            "log popularity and smoothed mean/positive ratio; row L1 normalization; no identity features",
+                            "log popularity and smoothed mean/positive ratio; row L1 normalization; "
+                            + ("identity and content blocks each carry half the weight" if identity_features
+                               else "content features only"),
         "user_feature_names": user_feature_names, "item_feature_names": item_feature_names,
-        "user_identity_features": False, "item_identity_features": False,
+        "user_identity_features": identity_features, "item_identity_features": identity_features,
         "user_metadata_sha256": user_metadata_sha256, "movie_metadata_sha256": movie_metadata_sha256,
         "feature_history_rows": len(history), "parameter_fit_rows_before_neutral_filter": len(fit),
         "statistics_protocol": "Per-user timestamp-group nearest-half split inside train: prefix for feature statistics, "
@@ -192,8 +233,10 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
                               "log1p(movie count)/maximum log1p count; mean rating with 20 global-mean prior "
                               "observations divided by 5; high-rating ratio with 20 global-rate prior observations",
         "unavailable_metadata": ["movie duration", "plot text"],
-        "representation_constraint": "Identical metadata yields identical vectors and biases; seen-item filtering "
-                                     "can still yield different recommendation lists",
+        "representation_constraint": ("Each training user/movie has an independently learned identity embedding "
+                                      "in addition to shared attribute embeddings" if identity_features else
+                                      "Identical metadata yields identical vectors and biases; seen-item filtering "
+                                      "can still yield different recommendation lists"),
         "training_feedback": ("Train rating >= relevance_threshold: +1; rating 1/2: -1; rating 3 and unknown omitted"
                               if loss == "logistic" else "Training ratings >= relevance_threshold only"),
         "training_positive_count": int((interactions.data > 0).sum()),
@@ -207,6 +250,14 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
         "candidate_protocol": "Shared full unseen training catalog and eligible users; no sampled evaluation negatives",
         "k_values": [5, 10], "metric_aggregation": "macro-average over eligible users; warm relevant targets",
         "early_stopping": "Choose among requested epoch checkpoints by validation NDCG@10",
+        "loss_diagnostics": ({"definition": "mean log(1+exp(-label*score)), excluding L2 penalty; "
+                                             "observed ratings >= threshold are +1, 1/2 are -1; 3/unknown omitted",
+                              "train_features": "Earlier train history; evaluated on disjoint parameter-fit labels",
+                              "validation_features": "Full train history; warm feedback of eligible validation users",
+                              "aggregation": "per observed label; separate positive/negative losses and counts saved",
+                              "selected": {name: value for name, value in selected.items()
+                                           if name.startswith(("train_", "validation_"))}}
+                             if loss == "logistic" else None),
         "input_sha256": checksums, "validation_metrics": validation_metrics, "test_metrics": test_metrics,
         "software": {"python": platform.python_version(), "numpy": np.__version__,
                      "pandas": pd.__version__, "scipy": scipy.__version__, "lightfm": lightfm.__version__},
@@ -219,9 +270,17 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
     (model_dir / "run.json").write_text(payload, encoding="utf-8")
     (table_dir / "lightfm_run.json").write_text(payload, encoding="utf-8")
     if previous:
-        compared = [{"feature_set": "previous", "split": stage, **previous[f"{stage}_metrics"]}
+        compared = [{"feature_set": "with_ids" if previous.get("user_identity_features") else "without_ids",
+                     "no_components": previous["selected_parameters"]["no_components"],
+                     "epochs": previous["selected_parameters"]["epochs"],
+                     "parameter_fit_feedback": previous["training_positive_count"] + previous["training_negative_count"],
+                     "split": stage, **previous[f"{stage}_metrics"]}
                     for stage in ("validation", "test")]
-        compared += [{"feature_set": "enriched", "split": stage, **run[f"{stage}_metrics"]}
+        compared += [{"feature_set": "with_ids" if identity_features else "without_ids",
+                      "no_components": parameters["no_components"],
+                      "epochs": parameters["epochs"],
+                      "parameter_fit_feedback": run["training_positive_count"] + run["training_negative_count"],
+                      "split": stage, **run[f"{stage}_metrics"]}
                      for stage in ("validation", "test")]
         pd.DataFrame(compared).to_csv(table_dir / "lightfm_feature_comparison.csv", index=False)
     write_comparison(table_dir)

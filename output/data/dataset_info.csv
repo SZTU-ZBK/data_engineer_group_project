@@ -1,0 +1,4 @@
+﻿table,rows,columns,missing_values,columns_with_missing,duplicate_rows
+users,6040,5,0,(none),0
+movies,3883,3,0,(none),0
+ratings,1000209,4,0,(none),0

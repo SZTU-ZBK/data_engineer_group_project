@@ -1,0 +1,13 @@
+﻿table,column,dtype,missing_values,unique_values
+users,user_id,Int64,0,6040
+users,gender,string,0,2
+users,age,Int64,0,7
+users,occupation,Int64,0,21
+users,zip_code,string,0,3439
+movies,movie_id,Int64,0,3883
+movies,title,string,0,3883
+movies,genres,string,0,301
+ratings,user_id,Int64,0,6040
+ratings,movie_id,Int64,0,3706
+ratings,rating,Int64,0,5
+ratings,timestamp,Int64,0,458455

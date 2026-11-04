@@ -2,7 +2,7 @@
 
 CS5481 小组项目一。实现数据探索、预处理，以及 ItemCF、LightFM 和 LRURec 的训练、评估与推荐。
 
-PPT 图片、指标说明及简要实验分析见 [output 资料包](output/README.md)。重新生成图表：`python scripts/build_ppt_materials.py`。
+PPT 图片、指标说明、实验分析及 5 分钟讲解提纲见 [output 资料包](output/README.md)。重新生成图表：`python scripts/build_ppt_materials.py`。
 
 ## 环境与运行
 

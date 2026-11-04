@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 import shutil
+import sys
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -18,6 +19,8 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from src.data import column_summary, dataset_summary, load_movielens, resolve_data_dir
 TABLES = ROOT / "outputs" / "tables"
 OUT = ROOT / "output"
 DOCS = ROOT / "docs/ppt"
@@ -104,7 +107,7 @@ def bar_metrics(fig, grid, model, metrics):
 
 def build():
     style()
-    documents = ["README.md", "数据处理说明.md", "评估指标说明.md", "ItemCF实验分析.md", "LightFM实验分析.md", "LRURec实验分析.md"]
+    documents = ["README.md", "数据处理说明.md", "评估指标说明.md", "ItemCF实验分析.md", "LightFM实验分析.md", "LRURec实验分析.md", "PPT讲解要点.md"]
     if not all((DOCS / name).is_file() for name in documents):
         raise FileNotFoundError("PPT document templates are missing.")
     if OUT.resolve() != ROOT.resolve() / "output":
@@ -276,7 +279,66 @@ def build():
     fig.text(.5,.10,"Offline results under this protocol. Unrated preferences are unknown; multi-seed stability remains untested.",ha="center",fontsize=14,color=MUTED)
     save(fig,"10_model_comparison.png")
 
-    sources += [ROOT / path for path in ["src/evaluate.py", "src/itemcf_history.py", "src/models/item_cf.py", "src/models/lightfm.py", "src/models/lrurec.py", "scripts/build_ppt_materials.py"]]
+    raw = load_movielens()
+    raw_info = dataset_summary(raw).reset_index()
+    fields = column_summary(raw).reset_index()
+    raw_info.to_csv(OUT / "data/dataset_info.csv", index=False, encoding="utf-8-sig")
+    fields.to_csv(OUT / "data/column_info.csv", index=False, encoding="utf-8-sig")
+    config = json.loads((ROOT / "data/processed/config.json").read_text(encoding="utf-8"))
+    for table in raw:
+        path = resolve_data_dir() / f"{table}.dat"
+        if hashlib.sha256(path.read_bytes()).hexdigest() != config["source_sha256"][path.name]:
+            raise ValueError(f"Raw dataset differs from preprocessing: {path.name}")
+        sources.append(path)
+    fig = canvas("Dataset Tables and Field Quality", "Raw table shapes, field types, missing counts and unique values before preprocessing.",
+                 "Source: users.dat / movies.dat / ratings.dat. Aggregate statistics only; raw records are not included in this package.")
+    for i, name in enumerate(("users", "movies", "ratings")):
+        ax = fig.add_axes([.045 + i*.32, .24, .29, .53]); ax.axis("off")
+        info = raw_info.loc[raw_info.table.eq(name)].iloc[0]
+        ax.set_title(f"{name.title()}\n{int(info.rows):,} rows × {int(info['columns'])} columns", fontsize=17, pad=18)
+        group = fields.loc[fields.table.eq(name)]
+        cells = [[row.column, row.dtype, str(row.missing_values), f"{row.unique_values:,}"] for row in group.itertuples()]
+        table = ax.table(cellText=cells, colLabels=["Column", "Type", "Nulls", "Unique"],
+                         colWidths=[.37,.20,.16,.27], cellLoc="left", bbox=[0,.10,1,.75])
+        table.auto_set_font_size(False); table.set_fontsize(11)
+        for (row, col), cell in table.get_celld().items():
+            cell.set_edgecolor("#D6E0EB")
+            if row == 0: cell.set_facecolor(NAVY); cell.set_text_props(color="white", weight="bold")
+            else: cell.set_facecolor("#F2F6FA" if row % 2 else "white")
+        ax.text(.5,-.08,f"Missing values: {int(info.missing_values):,}\nExact duplicate rows: {int(info.duplicate_rows):,}",
+                ha="center",va="top",fontsize=13,color=MUTED)
+    combinations = int(fields.loc[fields.table.eq("movies") & fields.column.eq("genres"), "unique_values"].iloc[0])
+    fig.text(.5,.10,f"Genres: {combinations} combinations of {len(genres)} individual labels. Age and occupation are category codes.\nTimestamps record rating submissions; unique genre strings are not individual genre labels.",
+             ha="center",fontsize=13,color=MUTED)
+    save(fig,"11_dataset_info.png")
+
+    example = recommendations.loc[recommendations.user_id.eq(1) & recommendations["rank"].le(5)].copy()
+    order = {"itemcf": 0, "lightfm": 1, "lrurec": 2}
+    example["model_order"] = example.algorithm.map(order)
+    example = example.sort_values(["model_order", "rank"])
+    fig = canvas("Recommendation Example: User 1", "Each algorithm recommends five movies outside the user's known rating history.",
+                 "Source: recommendations_user1.csv. Unrated test items are unknown preferences; they are not confirmed dislikes.")
+    ax = fig.add_axes([.04,.15,.92,.66]);ax.axis("off")
+    cells=[]
+    for row in example.itertuples():
+        label = "Unrated" if pd.isna(row.test_rating) else f"{row.test_rating:g} stars"
+        if row.relevant_in_test: label += " (hit)"
+        cells.append([{"itemcf":"ItemCF","lightfm":"LightFM","lrurec":"LRURec"}[row.algorithm],
+                      str(row.rank),row.title,row.genres,label])
+    table = ax.table(cellText=cells, colLabels=["Model","Rank","Movie title","Genres","Test feedback"],
+                     colWidths=[.09,.045,.445,.30,.12],cellLoc="left",bbox=[0,0,1,1])
+    table.auto_set_font_size(False);table.set_fontsize(9.7)
+    for (row, col),cell in table.get_celld().items():
+        cell.set_edgecolor("#D6E0EB")
+        if row==0:cell.set_facecolor(NAVY);cell.set_text_props(color="white",weight="bold")
+        else:
+            cell.set_facecolor("#F2F6FA" if ((row-1)//5)%2==0 else "white")
+            if col==0:cell.set_text_props(color=COLORS[cells[row-1][0]],weight="bold")
+    fig.text(.5,.095,"One example illustrates recommendation behavior; aggregate quality is evaluated over all 5,765 test users.",
+             ha="center",fontsize=13,color=MUTED)
+    save(fig,"12_recommendation_examples.png")
+
+    sources += [ROOT / path for path in ["src/data.py", "src/evaluate.py", "src/itemcf_history.py", "src/models/item_cf.py", "src/models/lightfm.py", "src/models/lrurec.py", "scripts/build_ppt_materials.py"]]
     sources += [DOCS / name for name in documents]
     manifest={"snapshot_date":"2026-11-04","dataset":"MovieLens 1M","metrics":list(METRICS),
               "k_values":[5,10],"main_figures_k":10,"figure_language":"en","analysis_language":"zh-CN",

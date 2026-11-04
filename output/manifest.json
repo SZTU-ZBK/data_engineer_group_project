@@ -23,7 +23,9 @@
     "07_lightfm_results.png",
     "08_lrurec_principle.png",
     "09_lrurec_results.png",
-    "10_model_comparison.png"
+    "10_model_comparison.png",
+    "11_dataset_info.png",
+    "12_recommendation_examples.png"
   ],
   "sources": {
     "outputs/tables/comparison_metrics.csv": "1002bf8f4c2be85fc8bff5f7268d669e1196680ef8447ab7c8dd7f036497f48d",
@@ -41,17 +43,22 @@
     "outputs/tables/itemcf_run.json": "a78465afebc8c5e2e7020bc5069925a529178bec0eb2140df2b3fe97a1fc0bb0",
     "outputs/tables/lightfm_run.json": "94385267f4740a8d095f4bdf2b0ccfd0f133444dc51f1cb889eb8b15869e2b1f",
     "outputs/tables/lrurec_run.json": "2d0c45f4f674440e0ea3adbe92f1bc5c137ade7147a5b73c187acf1f58f97a55",
+    "ml-1m/ml-1m/users.dat": "1dc3a95300cb19f7c10e027daf29b8cdf1d908dab65b5edfb45950aa389a10a3",
+    "ml-1m/ml-1m/movies.dat": "0140fc2356357c1a851d0f52e893a1e4d3696df632c4141cea8d5bc3d621f0b9",
+    "ml-1m/ml-1m/ratings.dat": "506d64ca44484487c11dc2d9a28de5c54948213e6b96285e298afe28d6ea4e0f",
+    "src/data.py": "fe399402b3f7beb6524691172a08fa8aeb1ab49d258c9a788bfa1ae30f76745d",
     "src/evaluate.py": "bd6b9125d0de63ad191c11b43c5d446859b3898428500e393d0d74dfab2616dc",
     "src/itemcf_history.py": "5d1bfe9891d72c5396f07fbd7f5b1bfe7d2d88bf8cbe3f9b22ae73e01a0fd2fa",
     "src/models/item_cf.py": "a4449b12378201bc40fceee7cd7f0be170129104fd9137a8b610b5123eae82d2",
     "src/models/lightfm.py": "c1945ff102425b239685531ac866412d2b6cd4dd00f002d185caef824eb000d1",
     "src/models/lrurec.py": "cefa2e2550a6822eb18e57173bf8b729e41f225da55b9d0a615d86a60dd7c2b5",
-    "scripts/build_ppt_materials.py": "31cfd26dd40522422eaf3c82992653875f6b0d15ef9a21b574e2a18b947ff429",
-    "docs/ppt/README.md": "06f5cfed348b15d5c358320d81e8af168e6f3f10a3e556498944de553d6c19f7",
-    "docs/ppt/数据处理说明.md": "62e76842fed24cd0c8f981c72d1b573ccea37fec61cc91b4f6d20adf87b69a09",
+    "scripts/build_ppt_materials.py": "337a9f49c302cae48a8c6f8b3f565db94107c31a8bbf20551d00bd50e1117f4d",
+    "docs/ppt/README.md": "8da19e803235be6ac18934e0afaf6e93a4fbbfadb3605524b0eba344857b5a30",
+    "docs/ppt/数据处理说明.md": "c1c6e3524ac6068035d73ce89d7563ec24befba4537defdadc8d273f500509f7",
     "docs/ppt/评估指标说明.md": "db5e2d479e5ab866f296a6305892340a18d294b744437fbddfcb8fb3831d5761",
     "docs/ppt/ItemCF实验分析.md": "bdf366bb6d525bb89a3d19d03341015ac1e090050b76e8f1b0817a86a296c6d3",
     "docs/ppt/LightFM实验分析.md": "48e7645a4b1cdaf2b52d16b9d6c116911238b4d514e522753e9f53afe246edcb",
-    "docs/ppt/LRURec实验分析.md": "419ce8da6f81ff4222f4da46012e264c2fd5dd0aa252c671152f057e915e485e"
+    "docs/ppt/LRURec实验分析.md": "419ce8da6f81ff4222f4da46012e264c2fd5dd0aa252c671152f057e915e485e",
+    "docs/ppt/PPT讲解要点.md": "c89399ee4b2b1947446b7161c8927f3dff5efb696c08e30812af07ee29787432"
   }
 }

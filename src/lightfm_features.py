@@ -42,6 +42,24 @@ def add_identity_features(content, user_ids, movie_ids):
     )
 
 
+def feature_variant(content, user_ids, movie_ids, variant="id_only", identity_features=True):
+    """Choose the deployed ID-only representation or an explicit attribute variant."""
+    user_ids, movie_ids = list(user_ids), list(movie_ids)
+    if variant == "id_only" and identity_features:
+        return ContentFeatures(identity(len(user_ids), format="csr", dtype="float32"),
+                               identity(len(movie_ids), format="csr", dtype="float32"),
+                               [f"user_id:{user}" for user in user_ids],
+                               [f"movie_id:{movie}" for movie in movie_ids])
+    if variant == "id_static":
+        uc = [i for i, name in enumerate(content.user_names) if not name.startswith("preferred_")]
+        ic = [i for i, name in enumerate(content.item_names) if not name.startswith("history_")]
+        content = ContentFeatures(normalize_rows(content.users[:, uc]), normalize_rows(content.items[:, ic]),
+                                  [content.user_names[i] for i in uc], [content.item_names[i] for i in ic])
+    elif variant not in ("id_only", "id_history"):
+        raise ValueError("Unknown LightFM feature variant.")
+    return add_identity_features(content, user_ids, movie_ids) if identity_features else content
+
+
 def split_feature_history(train):
     """Nearest half per user by timestamp group: prefix for features, suffix for fit.
 

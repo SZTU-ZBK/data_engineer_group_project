@@ -79,6 +79,19 @@ class ItemCFTests(unittest.TestCase):
         self.assertEqual(result.iloc[0]["because_movie_id"], 10)
         self.assertEqual(result.iloc[0]["title"], "C")
 
+    def test_time_weighted_scores_survive_save_load(self):
+        model = ItemCF(2, 0, half_life_days=90).fit(self.interactions)
+        expected = .25 * model.similarity_[0].toarray().ravel() + model.similarity_[1].toarray().ravel()
+        np.testing.assert_allclose(model.score([0, 1], [.25, 1]), expected)
+        with TemporaryDirectory() as folder:
+            model.save(folder)
+            restored = ItemCF.load(folder)
+            self.assertEqual(restored.half_life_days, 90)
+            np.testing.assert_array_equal(restored.score([0, 1], [.25, 1]), model.score([0, 1], [.25, 1]))
+        for history, weights in [([0, 0], [1, 1]), ([0], [-1]), ([0], [np.nan]), ([0, 1], [1])]:
+            with self.assertRaises(ValueError):
+                model.score(history, weights)
+
 
 class RankingTests(unittest.TestCase):
     def test_seen_movies_are_masked_and_score_ties_use_raw_ids(self):
@@ -94,8 +107,8 @@ class RankingTests(unittest.TestCase):
 
     def test_recall_and_discounted_gain_match_hand_calculation(self):
         result = ranking_metrics([30, 20, 10], {10, 30}, k_values=(1, 3))
-        self.assertEqual(result["Hits@1"], 1)
-        self.assertEqual(result["Hits@3"], 2)
+        self.assertEqual(set(result), {f"{metric}@{k}" for metric in ("Precision", "Recall", "NDCG")
+                                       for k in (1, 3)})
         self.assertEqual(result["Precision@1"], 1)
         self.assertAlmostEqual(result["Precision@3"], 2 / 3)
         self.assertEqual(result["Recall@1"], 0.5)
@@ -123,18 +136,15 @@ class RankingTests(unittest.TestCase):
         self.assertEqual(aggregate["users"], 1)
         self.assertEqual(aggregate["Recall@1"], 1)
         self.assertEqual(aggregate["Precision@1"], 1)
-        self.assertEqual(aggregate["MeanHits@1"], 1)
-        self.assertEqual(aggregate["HitRate@1"], 1)
         self.assertEqual(per_user["user_id"].tolist(), [1])
-        self.assertAlmostEqual(aggregate["CatalogCoverage@1"], 1 / 3)
+        self.assertEqual(set(aggregate), {"users", "Precision@1", "Recall@1", "NDCG@1"})
 
     def test_precision_denominator_is_list_length_not_relevant_count(self):
         result = ranking_metrics([10, 20, 30, 40, 50], {10}, k_values=(5,))
-        self.assertEqual(result["Hits@5"], 1)
         self.assertEqual(result["Recall@5"], 1)
         self.assertEqual(result["Precision@5"], 0.2)
 
-    def test_precision_mean_hits_and_hit_rate_are_distinct_aggregates(self):
+    def test_three_metrics_are_macro_averaged_over_users(self):
         contexts = pd.DataFrame([
             {"user_id": 1, "eligible": True, "positive_movie_tokens": [], "seen_movie_ids": [],
              "relevant_movie_ids": [10], "candidate_count": 3},
@@ -143,10 +153,10 @@ class RankingTests(unittest.TestCase):
         ])
         aggregate, per_user = evaluate_ranking(lambda user, tokens: [3, 2, 1], contexts,
                                                [10, 20, 30], k_values=(2,))
-        self.assertEqual(per_user["Hits@2"].tolist(), [1, 0])
-        self.assertEqual(aggregate["MeanHits@2"], 0.5)
+        self.assertEqual(per_user["Precision@2"].tolist(), [0.5, 0])
         self.assertEqual(aggregate["Precision@2"], 0.25)
-        self.assertEqual(aggregate["HitRate@2"], 0.5)
+        self.assertEqual(aggregate["Recall@2"], 0.5)
+        self.assertEqual(aggregate["NDCG@2"], 0.5)
 
 
 if __name__ == "__main__":

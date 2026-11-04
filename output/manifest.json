@@ -1,0 +1,57 @@
+{
+  "snapshot_date": "2026-11-04",
+  "dataset": "MovieLens 1M",
+  "metrics": [
+    "Precision",
+    "Recall",
+    "NDCG"
+  ],
+  "k_values": [
+    5,
+    10
+  ],
+  "main_figures_k": 10,
+  "figure_language": "en",
+  "analysis_language": "zh-CN",
+  "figures": [
+    "01_data_overview.png",
+    "02_preprocessing.png",
+    "03_metrics.png",
+    "04_itemcf_principle.png",
+    "05_itemcf_results.png",
+    "06_lightfm_principle.png",
+    "07_lightfm_results.png",
+    "08_lrurec_principle.png",
+    "09_lrurec_results.png",
+    "10_model_comparison.png"
+  ],
+  "sources": {
+    "outputs/tables/comparison_metrics.csv": "1002bf8f4c2be85fc8bff5f7268d669e1196680ef8447ab7c8dd7f036497f48d",
+    "outputs/tables/itemcf_validation_search.csv": "828f7cae0f2f4f59df11be5caa56364070f69a87a75839ee2f611babebc5d619",
+    "outputs/tables/lightfm_validation_search.csv": "5920f7779d5e5077d2446d6455de54752a149cf8b5dfb2e8d76774c5aca402a9",
+    "outputs/tables/lrurec_context_search.csv": "9518e40499878f718d00ea0fbd649100494c763260d5ce1ae2263f6b7b5923eb",
+    "outputs/tables/eda_summary.csv": "01e51b15536d76cb06663fe5951f421111dec26e8f18cbe1dc8c898b18972a66",
+    "outputs/tables/rating_distribution.csv": "18643cdc0ac4a8c776b14a92d5faf8a45a121ffcd7bacf94d7f22818cea2e6b0",
+    "outputs/tables/genre_distribution.csv": "b724ab90a504f07ff130d40e07dea517ca8ce06a41133805b91b564af5fc7d6d",
+    "outputs/tables/split_summary.csv": "c865d6eb76015c413b64ceb3489624951d651bd26ce9bdd30e9a909a136a8670",
+    "outputs/tables/cleaning_audit.csv": "ad7a0d518421fa81182cd3e5ff20abc7c0bb49f6b777fd947cc46fb6b62854ab",
+    "outputs/tables/evaluation_cohorts.csv": "4c6bd1da1309bd6ed1eb3bc78c6bfca8bcf90c34793aec53b6e488066e68837b",
+    "outputs/tables/model_input_summary.csv": "61782925a0e2a3a80bea430ff500dfbd1535c5e0cf74bd5cef3f82a96fa37f81",
+    "outputs/tables/three_model_recommendation_comparison.csv": "4237b68795b35aea491fc3564361c71ce3fad1942cd8bf2a8156eac2e79deda2",
+    "outputs/tables/itemcf_run.json": "a78465afebc8c5e2e7020bc5069925a529178bec0eb2140df2b3fe97a1fc0bb0",
+    "outputs/tables/lightfm_run.json": "94385267f4740a8d095f4bdf2b0ccfd0f133444dc51f1cb889eb8b15869e2b1f",
+    "outputs/tables/lrurec_run.json": "2d0c45f4f674440e0ea3adbe92f1bc5c137ade7147a5b73c187acf1f58f97a55",
+    "src/evaluate.py": "bd6b9125d0de63ad191c11b43c5d446859b3898428500e393d0d74dfab2616dc",
+    "src/itemcf_history.py": "5d1bfe9891d72c5396f07fbd7f5b1bfe7d2d88bf8cbe3f9b22ae73e01a0fd2fa",
+    "src/models/item_cf.py": "a4449b12378201bc40fceee7cd7f0be170129104fd9137a8b610b5123eae82d2",
+    "src/models/lightfm.py": "c1945ff102425b239685531ac866412d2b6cd4dd00f002d185caef824eb000d1",
+    "src/models/lrurec.py": "cefa2e2550a6822eb18e57173bf8b729e41f225da55b9d0a615d86a60dd7c2b5",
+    "scripts/build_ppt_materials.py": "31cfd26dd40522422eaf3c82992653875f6b0d15ef9a21b574e2a18b947ff429",
+    "docs/ppt/README.md": "06f5cfed348b15d5c358320d81e8af168e6f3f10a3e556498944de553d6c19f7",
+    "docs/ppt/数据处理说明.md": "62e76842fed24cd0c8f981c72d1b573ccea37fec61cc91b4f6d20adf87b69a09",
+    "docs/ppt/评估指标说明.md": "db5e2d479e5ab866f296a6305892340a18d294b744437fbddfcb8fb3831d5761",
+    "docs/ppt/ItemCF实验分析.md": "bdf366bb6d525bb89a3d19d03341015ac1e090050b76e8f1b0817a86a296c6d3",
+    "docs/ppt/LightFM实验分析.md": "48e7645a4b1cdaf2b52d16b9d6c116911238b4d514e522753e9f53afe246edcb",
+    "docs/ppt/LRURec实验分析.md": "419ce8da6f81ff4222f4da46012e264c2fd5dd0aa252c671152f057e915e485e"
+  }
+}

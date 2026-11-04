@@ -1,7 +1,14 @@
-# 未完成实验归档
+# 实验归档
 
-`lightfm_capacity_partial.csv` 保留整理工作区前的容量实验进度：32/64 维各 10 轮、128 维仅 1 轮，共 21 个验证检查点。
+此目录保留实验过程与历史产物，PPT 交付使用仓库根目录的 `output/`。
 
-该实验未完成，没有最终测试评估。表中的训练/验证交叉熵及排名指标可用于诊断，不用于替代 `outputs/tables/lightfm_run.json` 和 `lightfm_metrics.csv` 代表的已完成实验。当前最终 LightFM 模型仍为 32 维、第 5 轮。
+| 路径 | 内容 |
+|---|---|
+| `round1/` | 第一轮验证搜索、前后比较、选模及模型采用记录 |
+| `round1/pre_promotion_tables/` | 采用新配置前的本地表格副本，已忽略 Git；旧版本也可从提交历史查看 |
+| `lightfm_capacity_partial.csv` | 未完成的容量实验：32/64 维各 10 轮、128 维 1 轮，共 21 个验证点 |
+| `legacy_figures/` | 已不由当前 notebook 刷新的历史探索和诊断图 |
 
-新实验运行期间，实时进度写入 `outputs/tables/lightfm_search_progress.csv`；完整训练成功后才写入最终搜索表、容量汇总和运行记录。需要比较最终结果时，以完成实验的运行记录为准。
+历史实验脚本位于 `scripts/experiments/`。当前有效模型记录与指标位于 `outputs/tables/`，权重位于本地 `outputs/models/`。
+
+当前配置为 ItemCF 50 邻居＋90 天半衰期、LightFM 仅 ID＋32 维＋10 轮，以及 LRURec 训练窗口 50／推理窗口 100。

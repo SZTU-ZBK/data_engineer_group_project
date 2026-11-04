@@ -14,7 +14,7 @@ from scipy.sparse import csr_matrix, load_npz
 
 from src.data import resolve_data_dir
 from src.evaluate import evaluate_ranking, write_comparison
-from src.lightfm_features import add_identity_features, build_enriched_features, split_feature_history
+from src.lightfm_features import build_enriched_features, feature_variant, split_feature_history
 from src.lightfm_diagnostics import observed_logistic_loss
 from src.models.lightfm import (LightFMRecommender,
                                build_logistic_interactions, check_training_backend)
@@ -32,7 +32,7 @@ def save_checkpoint(model, engine, directory, trial):
 
 
 def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, loss="logistic",
-                identity_features=True):
+                identity_features=True, feature_set="id_only"):
     check_training_backend(loss)
     import lightfm
     from lightfm import LightFM
@@ -86,9 +86,17 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
                                                 genres, genre_names, history, config["relevance_threshold"])
     scoring_features = build_enriched_features(users, user_metadata, movies, movie_metadata,
                                                genres, genre_names, train, config["relevance_threshold"])
-    if identity_features:
-        training_features = add_identity_features(training_features, users.user_id, movies.movie_id)
-        scoring_features = add_identity_features(scoring_features, users.user_id, movies.movie_id)
+    if not identity_features and feature_set == "id_only":
+        feature_set = "id_history"
+    training_features = feature_variant(training_features, users.user_id, movies.movie_id, feature_set, identity_features)
+    scoring_features = feature_variant(scoring_features, users.user_id, movies.movie_id, feature_set, identity_features)
+    descriptions = {"id_only": ("id_only", "id_only"),
+                    "id_static": ("demographics", "genres+decade"),
+                    "id_history": ("demographics+genre_preferences+decade_preferences",
+                                   "genres+decade+popularity+smoothed_ratings")}
+    user_description, item_description = descriptions[feature_set]
+    if identity_features and feature_set != "id_only":
+        user_description, item_description = "id+" + user_description, "id+" + item_description
     if (training_features.user_names != scoring_features.user_names
             or training_features.item_names != scoring_features.item_names):
         raise ValueError("Training/scoring feature vocabularies differ.")
@@ -105,8 +113,8 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
         interactions.eliminate_zeros()
     print(f'LightFM {loss}: {int((interactions.data > 0).sum()):,} fit positives, '
           f'{int((interactions.data < 0).sum()):,} fit negatives; '
-          f'{len(history):,} separate train events for feature statistics.', flush=True)
-    print(f"Content/history features: {user_features.shape[1]} user, {features.shape[1]} movie; "
+          f'{len(history):,} reserved prefix events.', flush=True)
+    print(f"Feature set {feature_set}: {user_features.shape[1]} user columns, {features.shape[1]} movie columns; "
           f"identity embeddings={identity_features}.", flush=True)
     movie_ids, user_ids = movies.movie_id.to_numpy(), users.user_id.to_numpy()
     validation = pd.read_json(processed_dir / "validation_contexts.jsonl", lines=True)
@@ -158,10 +166,7 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
                 losses.update({f"validation_{name}": value
                                for name, value in observed_logistic_loss(model, validation_feedback).items()})
             trial = {"loss": loss,
-                     "user_features": ("id+" if identity_features else "")
-                                      + "demographics+genre_preferences+decade_preferences",
-                     "item_features": ("id+" if identity_features else "")
-                                      + "genres+decade+popularity+smoothed_ratings",
+                     "user_features": user_description, "item_features": item_description,
                      "no_components": dimensions, "alpha": alpha,
                      "epochs": checkpoint, "fit_seconds": fit_seconds, **losses, **metrics}
             trials.append(trial)
@@ -210,30 +215,37 @@ def run_lightfm(processed_dir, output_dir, components, epochs, alphas, seed=42, 
         examples.append(example)
     pd.concat(examples, ignore_index=True).to_csv(table_dir / "lightfm_recommendation_examples.csv", index=False)
     run = {
-        "algorithm": "LightFM", "loss": loss, "selected_parameters": parameters,
+        "algorithm": "LightFM", "loss": loss, "selected_parameters": parameters, "feature_set": feature_set,
         "grid": {"no_components": components, "alpha": alphas, "epochs": epochs,
                  "user_features": [parameters["user_features"]], "item_features": [parameters["item_features"]]},
         "selection_metric": "NDCG@10 on validation",
         "tie_break": "Recall@10, smaller dimensions, earlier epochs, smaller alpha",
         "random_seed": seed, "num_threads": 1, "learning_rate": 0.05,
         "max_sampled": 10 if loss == "warp" else None,
-        "feature_encoding": "Demographic one-hot, positive-history genre/decade distributions; movie genre/decade, "
+        "feature_encoding": ("Independent user/movie ID embeddings; identity matrices with unit row mass"
+                             if feature_set == "id_only" else
+                             "Demographic one-hot, positive-history genre/decade distributions; movie genre/decade, "
                             "log popularity and smoothed mean/positive ratio; row L1 normalization; "
                             + ("identity and content blocks each carry half the weight" if identity_features
-                               else "content features only"),
+                               else "content features only")),
         "user_feature_names": user_feature_names, "item_feature_names": item_feature_names,
         "user_identity_features": identity_features, "item_identity_features": identity_features,
         "user_metadata_sha256": user_metadata_sha256, "movie_metadata_sha256": movie_metadata_sha256,
-        "feature_history_rows": len(history), "parameter_fit_rows_before_neutral_filter": len(fit),
-        "statistics_protocol": "Per-user timestamp-group nearest-half split inside train: prefix for feature statistics, "
+        "feature_history_rows": 0 if feature_set == "id_only" else len(history),
+        "reserved_prefix_rows": len(history), "parameter_fit_rows_before_neutral_filter": len(fit),
+        "statistics_protocol": ("No statistical features; use the same suffix fitting labels as the controlled feature study"
+                               if feature_set == "id_only" else
+                               "Per-user timestamp-group nearest-half split inside train: prefix for feature statistics, "
                                "disjoint suffix labels for parameter fitting. Validation/test representations use full "
-                               "train statistics only. Per-user chronology, not a global calendar split.",
+                               "train statistics only. Per-user chronology, not a global calendar split."),
         "smoothing_prior_weight": 20.0,
         "statistic_encoding": "Positive=rating >= relevance_threshold; each profile block L1 normalized; "
                               "log1p(movie count)/maximum log1p count; mean rating with 20 global-mean prior "
                               "observations divided by 5; high-rating ratio with 20 global-rate prior observations",
         "unavailable_metadata": ["movie duration", "plot text"],
-        "representation_constraint": ("Each training user/movie has an independently learned identity embedding "
+        "representation_constraint": ("Each training user/movie has an independent ID embedding; no metadata features"
+                                      if feature_set == "id_only" else
+                                      "Each training user/movie has an independently learned identity embedding "
                                       "in addition to shared attribute embeddings" if identity_features else
                                       "Identical metadata yields identical vectors and biases; seen-item filtering "
                                       "can still yield different recommendation lists"),

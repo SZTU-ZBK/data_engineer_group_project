@@ -1,0 +1,8 @@
+﻿action,removed_rows,remaining_rows
+input,0,1000209
+missing_required_fields,0,1000209
+invalid_rating,0,1000209
+invalid_timestamp,0,1000209
+unknown_user,0,1000209
+unknown_movie,0,1000209
+exact_duplicate,0,1000209

@@ -1,31 +1,31 @@
-user_id,rank,movie_id,title,genres,score
-1,1,364,"Lion King, The (1994)",Animation|Children's|Musical,6.376762866973877
-1,2,1907,Mulan (1998),Animation|Children's,4.574138164520264
-1,3,34,Babe (1995),Children's|Comedy|Drama,4.52129602432251
-1,4,2355,"Bug's Life, A (1998)",Animation|Children's|Comedy,4.358693599700928
-1,5,596,Pinocchio (1940),Animation|Children's,4.283982753753662
-1,6,2081,"Little Mermaid, The (1989)",Animation|Children's|Comedy|Musical|Romance,4.039323806762695
-1,7,262,"Little Princess, A (1995)",Children's|Drama,3.943774700164795
-1,8,2078,"Jungle Book, The (1967)",Animation|Children's|Comedy|Musical,3.77215313911438
-1,9,480,Jurassic Park (1993),Action|Adventure|Sci-Fi,3.75042462348938
-1,10,590,Dances with Wolves (1990),Adventure|Drama|Western,3.7281761169433594
-2,1,10,GoldenEye (1995),Action|Adventure|Thriller,6.9276123046875
-2,2,316,Stargate (1994),Action|Adventure|Sci-Fi,6.111954689025879
-2,3,292,Outbreak (1995),Action|Drama|Thriller,5.964375972747803
-2,4,733,"Rock, The (1996)",Action|Adventure|Thriller,5.9252495765686035
-2,5,1608,Air Force One (1997),Action|Thriller,5.852054595947266
-2,6,1049,"Ghost and the Darkness, The (1996)",Action|Adventure,5.38847017288208
-2,7,1580,Men in Black (1997),Action|Adventure|Comedy|Sci-Fi,5.31586217880249
-2,8,329,Star Trek: Generations (1994),Action|Adventure|Sci-Fi,5.289260387420654
-2,9,494,Executive Decision (1996),Action|Thriller,5.27401065826416
-2,10,112,Rumble in the Bronx (1995),Action|Adventure|Crime,5.255610466003418
-3,1,1,Toy Story (1995),Animation|Children's|Comedy,6.446930408477783
-3,2,1234,"Sting, The (1973)",Comedy|Crime,6.233504295349121
-3,3,2918,Ferris Bueller's Day Off (1986),Comedy,6.216987133026123
-3,4,1307,When Harry Met Sally... (1989),Comedy|Romance,6.169157981872559
-3,5,1278,Young Frankenstein (1974),Comedy|Horror,5.996636867523193
-3,6,2791,Airplane! (1980),Comedy,5.7835164070129395
-3,7,1080,Monty Python's Life of Brian (1979),Comedy,5.759346961975098
-3,8,2716,Ghostbusters (1984),Comedy|Horror,5.643743991851807
-3,9,34,Babe (1995),Children's|Comedy|Drama,5.58405876159668
-3,10,2174,Beetlejuice (1988),Comedy|Fantasy,5.508223056793213
+user_id,rank,movie_id,title,genres,score,relevant_in_test
+1,1,364,"Lion King, The (1994)",Animation|Children's|Musical,6.376762866973877,False
+1,2,1907,Mulan (1998),Animation|Children's,4.574138164520264,True
+1,3,34,Babe (1995),Children's|Comedy|Drama,4.52129602432251,False
+1,4,2355,"Bug's Life, A (1998)",Animation|Children's|Comedy,4.358693599700928,True
+1,5,596,Pinocchio (1940),Animation|Children's,4.283982753753662,False
+1,6,2081,"Little Mermaid, The (1989)",Animation|Children's|Comedy|Musical|Romance,4.039323806762695,False
+1,7,262,"Little Princess, A (1995)",Children's|Drama,3.943774700164795,False
+1,8,2078,"Jungle Book, The (1967)",Animation|Children's|Comedy|Musical,3.77215313911438,False
+1,9,480,Jurassic Park (1993),Action|Adventure|Sci-Fi,3.75042462348938,False
+1,10,590,Dances with Wolves (1990),Adventure|Drama|Western,3.7281761169433594,False
+2,1,10,GoldenEye (1995),Action|Adventure|Thriller,6.934459686279297,False
+2,2,316,Stargate (1994),Action|Adventure|Sci-Fi,6.130296230316162,False
+2,3,292,Outbreak (1995),Action|Drama|Thriller,5.982062339782715,False
+2,4,733,"Rock, The (1996)",Action|Adventure|Thriller,5.919721603393555,False
+2,5,1608,Air Force One (1997),Action|Thriller,5.865396022796631,False
+2,6,1049,"Ghost and the Darkness, The (1996)",Action|Adventure,5.395989418029785,False
+2,7,494,Executive Decision (1996),Action|Thriller,5.302736282348633,False
+2,8,329,Star Trek: Generations (1994),Action|Adventure|Sci-Fi,5.302108287811279,False
+2,9,1580,Men in Black (1997),Action|Adventure|Comedy|Sci-Fi,5.3018479347229,False
+2,10,112,Rumble in the Bronx (1995),Action|Adventure|Crime,5.240743160247803,False
+3,1,1,Toy Story (1995),Animation|Children's|Comedy,6.446930408477783,False
+3,2,1234,"Sting, The (1973)",Comedy|Crime,6.233504295349121,False
+3,3,2918,Ferris Bueller's Day Off (1986),Comedy,6.216987133026123,False
+3,4,1307,When Harry Met Sally... (1989),Comedy|Romance,6.169157981872559,False
+3,5,1278,Young Frankenstein (1974),Comedy|Horror,5.996636867523193,False
+3,6,2791,Airplane! (1980),Comedy,5.7835164070129395,False
+3,7,1080,Monty Python's Life of Brian (1979),Comedy,5.759346961975098,False
+3,8,2716,Ghostbusters (1984),Comedy|Horror,5.643743991851807,False
+3,9,34,Babe (1995),Children's|Comedy|Drama,5.58405876159668,False
+3,10,2174,Beetlejuice (1988),Comedy|Fantasy,5.508223056793213,False

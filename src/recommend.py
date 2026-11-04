@@ -11,6 +11,7 @@ from src.data import PROJECT_ROOT, SCHEMAS, resolve_data_dir
 from src.evaluate import rank_candidates
 from src.models.item_cf import ItemCF
 from src.models.lightfm import LightFMRecommender
+from src.itemcf_history import add_context_weights, decay_histories
 
 
 def file_sha256(path: str | Path) -> str:
@@ -38,7 +39,11 @@ def recommendation_table(model, context, movie_ids, movies: pd.DataFrame, k=10) 
     movie_ids = np.asarray(movie_ids, dtype="int64")
     tokens = np.asarray(context["positive_movie_tokens"], dtype="int64")
     history = np.unique(tokens[tokens > 0] - 1)
-    scores = (model.score(history) if isinstance(model, ItemCF)
+    history_weights = context.get("positive_history_weights")
+    if history_weights is not None:
+        history = tokens[tokens > 0] - 1
+        history_weights = np.asarray(history_weights, dtype="float32")[tokens > 0]
+    scores = (model.score(history, history_weights) if isinstance(model, ItemCF)
               else model.score_tokens(int(context["user_id"]), context["positive_movie_tokens"]))
     ranked_ids, ranked_scores = rank_candidates(scores, movie_ids, context["seen_movie_ids"], k)
     movie_to_index = {int(movie): index for index, movie in enumerate(movie_ids)}
@@ -54,12 +59,13 @@ def recommendation_table(model, context, movie_ids, movies: pd.DataFrame, k=10) 
             continue
         reason_id, reason_title, reason_similarity = None, "No contributing positive-history neighbor", 0.0
         if len(history):
-            contributions = model.similarity_[history, movie_to_index[int(movie)]].toarray().ravel()
+            similarities = model.similarity_[history, movie_to_index[int(movie)]].toarray().ravel()
+            contributions = similarities if history_weights is None else similarities * history_weights
             if np.any(contributions > 0):
                 strongest = np.lexsort((movie_ids[history], -contributions))[0]
                 reason_id = int(movie_ids[history[strongest]])
                 reason_title = str(metadata.loc[reason_id, "title"])
-                reason_similarity = float(contributions[strongest])
+                reason_similarity = float(similarities[strongest])
         record.update({
             "because_movie_id": reason_id, "because_title": reason_title,
             "because_similarity": reason_similarity,
@@ -106,4 +112,15 @@ def recommend_for_user(
         model = (ItemCF if algorithm == "itemcf" else LightFMRecommender).load(model_dir)
     if len(movie_ids) != model.n_items_:
         raise ValueError("Movie mapping and saved model have incompatible shapes.")
-    return recommendation_table(model, matches.iloc[0], movie_ids, load_movie_metadata(), k)
+    context = matches.iloc[0].to_dict()
+    if algorithm == "itemcf" and model.half_life_days is not None:
+        for name in ["train.csv", *(["validation.csv"] if stage == "test" else [])]:
+            if file_sha256(processed_dir / name) != run["input_sha256"][name]:
+                raise ValueError(f"History file changed: {name}")
+        history = pd.read_csv(processed_dir / "train.csv")
+        if stage == "test":
+            history = pd.concat([history, pd.read_csv(processed_dir / "validation.csv")])
+        history = history.loc[history.user_id.eq(user_id)]
+        movie_map = dict(zip(mapping.movie_id, mapping.movie_index))
+        context = add_context_weights(context, decay_histories(history, movie_map, model.half_life_days))
+    return recommendation_table(model, context, movie_ids, load_movie_metadata(), k)

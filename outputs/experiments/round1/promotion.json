@@ -1,0 +1,31 @@
+{
+  "promoted": true,
+  "configurations": {
+    "ItemCF": {
+      "half_life_days": 90,
+      "n_neighbors": 50,
+      "shrinkage": 0.0,
+      "age_anchor": "latest known rating timestamp per user"
+    },
+    "LRURec": {
+      "training_length": 50,
+      "inference_length": 100,
+      "weights": "unchanged baseline epoch 50",
+      "retrained": false
+    },
+    "LightFM": {
+      "feature_set": "id_only",
+      "epochs": 10,
+      "reused": false,
+      "loss": "logistic",
+      "no_components": 32,
+      "alpha": 1e-06,
+      "seed": 42,
+      "fit_positive_labels": 225771,
+      "fit_negative_labels": 66930,
+      "identity_only_weight": 1.0,
+      "hybrid_identity_weight": 0.5
+    }
+  },
+  "archive": "outputs/experiments/round1/pre_promotion_tables"
+}

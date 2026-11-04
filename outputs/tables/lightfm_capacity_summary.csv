@@ -1,0 +1,2 @@
+algorithm,variant,split,users,Precision@5,Recall@5,NDCG@5,Precision@10,Recall@10,NDCG@10,epochs,reused,checkpoint_seconds,no_components,alpha,user_features,item_features,loss,selected
+LightFM,id_only,validation,5776,0.0443905817174515,0.0233468986590393,0.0482767946878899,0.0399238227146814,0.0403721917108437,0.0497472112569544,10.0,False,12.904914299957454,32,1e-06,id_only,id_only,logistic,True

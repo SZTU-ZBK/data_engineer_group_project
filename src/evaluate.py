@@ -22,7 +22,7 @@ def rank_candidates(scores, movie_ids, seen_movie_ids, k: int = 10):
 
 
 def ranking_metrics(recommended_movie_ids, relevant_movie_ids, k_values=(5, 10)) -> dict:
-    """Binary-relevance hits, Precision, Recall and NDCG at each cutoff.
+    """Binary-relevance Precision, Recall and NDCG at each cutoff.
 
     Precision divides by the requested list length; Recall divides by ALL warm
     targets. Unrated recommendations are non-hits, not confirmed dislikes.
@@ -38,7 +38,6 @@ def ranking_metrics(recommended_movie_ids, relevant_movie_ids, k_values=(5, 10))
         hits = np.asarray([movie in relevant for movie in recommended[:k]], dtype="float64")
         discounts = 1 / np.log2(np.arange(2, k + 2))
         ideal = discounts[:min(k, len(relevant))].sum()
-        result[f"Hits@{k}"] = int(hits.sum())
         result[f"Precision@{k}"] = float(hits.sum() / k)
         result[f"Recall@{k}"] = float(hits.sum() / len(relevant))
         result[f"NDCG@{k}"] = float(np.dot(hits, discounts) / ideal)
@@ -59,7 +58,6 @@ def evaluate_ranking(score_fn, contexts: pd.DataFrame, movie_ids, k_values=(5, 1
     if not k_values or min(k_values) < 1:
         raise ValueError("Provide at least one positive ranking cutoff.")
     movie_ids = np.asarray(movie_ids, dtype="int64")
-    recommended_catalog = {k: set() for k in k_values}
     rows = []
     for row in cohort.itertuples(index=False):
         scores = score_fn(int(row.user_id), row.positive_movie_tokens)
@@ -67,17 +65,12 @@ def evaluate_ranking(score_fn, contexts: pd.DataFrame, movie_ids, k_values=(5, 1
         metrics = ranking_metrics(ranked, row.relevant_movie_ids, k_values)
         rows.append({"user_id": int(row.user_id), "relevant_items": len(row.relevant_movie_ids),
                      "candidate_count": int(row.candidate_count), **metrics})
-        for k in k_values:
-            recommended_catalog[k].update(ranked[:k].tolist())
     per_user = pd.DataFrame(rows)
     aggregate = {"users": len(per_user)}
     for k in k_values:
-        aggregate[f"MeanHits@{k}"] = float(per_user[f"Hits@{k}"].mean())
         aggregate[f"Precision@{k}"] = float(per_user[f"Precision@{k}"].mean())
-        aggregate[f"HitRate@{k}"] = float(per_user[f"Hits@{k}"].gt(0).mean())
         aggregate[f"Recall@{k}"] = float(per_user[f"Recall@{k}"].mean())
         aggregate[f"NDCG@{k}"] = float(per_user[f"NDCG@{k}"].mean())
-        aggregate[f"CatalogCoverage@{k}"] = len(recommended_catalog[k]) / len(movie_ids)
     return aggregate, per_user
 
 
@@ -99,7 +92,8 @@ def write_comparison(table_dir):
                 raise ValueError("Saved models use different evaluation cohorts.")
         runs.append(run)
         results.extend({"algorithm": label, "loss": run.get("loss", "-"),
-                        "split": stage, **run[f"{stage}_metrics"]}
+                        "split": stage, **{key: value for key, value in run[f"{stage}_metrics"].items()
+                                           if key == "users" or key.startswith(("Precision@", "Recall@", "NDCG@"))}}
                        for stage in ("validation", "test"))
     if results:
         pd.DataFrame(results).to_csv(table_dir / "comparison_metrics.csv", index=False)

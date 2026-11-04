@@ -1,0 +1,16 @@
+﻿algorithm,rank,title,genres,test_rating,relevant_in_test
+itemcf,1,Raiders of the Lost Ark (1981),Action|Adventure,,False
+itemcf,2,Star Wars: Episode V - The Empire Strikes Back (1980),Action|Adventure|Drama|Sci-Fi|War,,False
+itemcf,3,"Shawshank Redemption, The (1994)",Drama,,False
+itemcf,4,"Silence of the Lambs, The (1991)",Drama|Thriller,,False
+itemcf,5,Pulp Fiction (1994),Crime|Drama,,False
+lightfm,1,Raiders of the Lost Ark (1981),Action|Adventure,,False
+lightfm,2,"Shawshank Redemption, The (1994)",Drama,,False
+lightfm,3,"Silence of the Lambs, The (1991)",Drama|Thriller,,False
+lightfm,4,"Godfather, The (1972)",Action|Crime|Drama,,False
+lightfm,5,"Fugitive, The (1993)",Action|Thriller,,False
+lrurec,1,"Lion King, The (1994)",Animation|Children's|Musical,,False
+lrurec,2,Mulan (1998),Animation|Children's,4.0,True
+lrurec,3,Babe (1995),Children's|Comedy|Drama,,False
+lrurec,4,"Bug's Life, A (1998)",Animation|Children's|Comedy,5.0,True
+lrurec,5,Pinocchio (1940),Animation|Children's,,False

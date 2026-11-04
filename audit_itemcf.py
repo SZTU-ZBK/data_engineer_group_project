@@ -9,6 +9,7 @@ from scipy.sparse import csr_matrix, load_npz
 from src.data import PROJECT_ROOT, SCHEMAS, resolve_data_dir
 from src.evaluate import evaluate_ranking, rank_candidates
 from src.models.item_cf import ItemCF
+from src.itemcf_history import decay_histories
 from src.recommend import file_sha256
 
 
@@ -88,6 +89,7 @@ def main():
         contexts_by_stage[stage] = contexts
         history = train if stage == "validation" else pd.concat([train, splits["validation"]])
         history = history.sort_values(["user_id", "timestamp", "movie_id", "event_id"])
+        weighted = decay_histories(history, item_map.to_dict(), model.half_life_days) if model.half_life_days else None
         seen_by_user = history.groupby("user_id")["movie_id"].agg(set).to_dict()
         positive_history = history.loc[history["rating"].ge(config["relevance_threshold"])
                                        & history["movie_id"].isin(catalog)].copy()
@@ -99,7 +101,7 @@ def main():
         check(f"{stage}_context_user_mismatches", len(set(contexts["user_id"]) ^ set(holdout["user_id"])))
         mismatches = dict(history=0, tokens=0, targets=0, candidates=0, eligibility=0, seen_recommendations=0)
         if stage == "test":
-            mismatches.update(independently_counted_hits=0, independently_counted_precision=0)
+            mismatches.update(independently_counted_precision=0)
         categories = {"heldout_rating_4_or_5": 0, "heldout_rating_1_to_3": 0, "no_heldout_rating": 0}
         zero_score_slots, nonzero_candidates, predicted_support, candidate_support = 0, [], [], []
         for row in contexts.itertuples(index=False):
@@ -118,13 +120,13 @@ def main():
             mismatches["eligibility"] += row.eligible != eligible
             if not row.eligible:
                 continue
-            scores = model.score(np.asarray(expected_tokens, dtype=int) - 1)
+            scores = (model.score(*weighted[int(row.user_id)]) if weighted is not None
+                      else model.score(np.asarray(expected_tokens, dtype=int) - 1))
             ranked, ranked_scores = rank_candidates(scores, movie_ids, seen, 10)
             mismatches["seen_recommendations"] += bool(set(ranked) & seen)
             raw_hits = sum(observed_ratings.get(int(movie), 0) >= config["relevance_threshold"] for movie in ranked)
             if stage == "test":
                 saved = test_per_user.loc[row.user_id]
-                mismatches["independently_counted_hits"] += raw_hits != saved["Hits@10"]
                 mismatches["independently_counted_precision"] += not np.isclose(raw_hits / 10, saved["Precision@10"])
             for movie in ranked:
                 if int(movie) not in observed_ratings:
@@ -146,11 +148,9 @@ def main():
         total_hits = categories["heldout_rating_4_or_5"]
         check(f"{stage}_aggregate_precision_mismatch", not np.isclose(
             total_hits / (n_users * 10), aggregate["Precision@10"], rtol=0, atol=1e-12))
-        check(f"{stage}_aggregate_mean_hits_mismatch", not np.isclose(
-            total_hits / n_users, aggregate["MeanHits@10"], rtol=0, atol=1e-12))
         for category, count in categories.items():
             status_records.append({"stage": stage, "category": category, "recommendations": count,
-                                   "share": count / (n_users * 10), "mean_per_user": count / n_users})
+                                   "share": count / (n_users * 10)})
         relevant_counts = eligible_rows["relevant_movie_ids"].map(len)
         scope_records.append({
             "stage": stage, "users": n_users, "mean_candidate_count": eligible_rows["candidate_count"].mean(),
@@ -175,12 +175,6 @@ def main():
     pd.DataFrame(status_records).to_csv(tables / "itemcf_recommendation_status.csv", index=False)
     pd.DataFrame(scope_records).to_csv(tables / "itemcf_evaluation_scope.csv", index=False)
     reference.to_csv(tables / "itemcf_validation_reference.csv", index=False)
-    distributions = []
-    for k in [5, 10]:
-        counts = test_per_user[f"Hits@{k}"].value_counts().reindex(range(k + 1), fill_value=0)
-        for hits, count in counts.items():
-            distributions.append({"k": k, "hits": hits, "users": int(count), "share": count / len(test_per_user)})
-    pd.DataFrame(distributions).to_csv(tables / "itemcf_hit_distribution.csv", index=False)
     print(integrity.to_string(index=False))
     print(pd.DataFrame(status_records).to_string(index=False))
     print(pd.DataFrame(scope_records).to_string(index=False))

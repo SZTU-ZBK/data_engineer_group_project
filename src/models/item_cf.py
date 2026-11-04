@@ -18,13 +18,16 @@ class ItemCF:
     positive items. Scores are ranking values, not predicted 1-5 star ratings.
     """
 
-    def __init__(self, n_neighbors: int = 50, shrinkage: float = 0.0):
+    def __init__(self, n_neighbors: int = 50, shrinkage: float = 0.0, half_life_days=None):
         if not isinstance(n_neighbors, int) or n_neighbors < 1:
             raise ValueError("n_neighbors must be a positive integer.")
         if not np.isfinite(shrinkage) or shrinkage < 0:
             raise ValueError("shrinkage must be a finite nonnegative number.")
         self.n_neighbors = n_neighbors
         self.shrinkage = float(shrinkage)
+        if half_life_days is not None and (not np.isfinite(half_life_days) or half_life_days <= 0):
+            raise ValueError("half_life_days must be positive or None.")
+        self.half_life_days = half_life_days
         self.similarity_: csr_matrix | None = None
 
     def fit(self, positive_interactions: csr_matrix) -> "ItemCF":
@@ -65,13 +68,19 @@ class ItemCF:
         self.fit_seconds_ = perf_counter() - start
         return self
 
-    def score(self, history_item_indices) -> np.ndarray:
+    def score(self, history_item_indices, history_weights=None) -> np.ndarray:
         """Score all items using zero-based indexes of known positive history."""
         if self.similarity_ is None:
             raise RuntimeError("Fit or load the model before scoring.")
         history = np.asarray(history_item_indices, dtype="int64")
         if history.ndim != 1 or np.any(history < 0) or np.any(history >= self.n_items_):
             raise ValueError("History must contain valid zero-based item indexes.")
+        if history_weights is not None:
+            weights = np.asarray(history_weights, dtype="float32")
+            if (weights.shape != history.shape or not np.isfinite(weights).all()
+                    or (weights < 0).any() or len(np.unique(history)) != len(history)):
+                raise ValueError("Provide finite nonnegative weights for unique history indexes.")
+            return np.asarray(self.similarity_[history].T.dot(weights)).ravel().astype("float32")
         history = np.unique(history)
         if not len(history):
             return np.zeros(self.n_items_, dtype="float32")
@@ -93,6 +102,7 @@ class ItemCF:
         metadata = {
             "algorithm": "positive_feedback_itemcf", "n_neighbors": self.n_neighbors,
             "shrinkage": self.shrinkage, "n_users": self.n_users_, "n_items": self.n_items_,
+            "half_life_days": self.half_life_days,
             "supported_items": self.supported_items_, "fit_seconds": self.fit_seconds_,
         }
         (directory / "model.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
@@ -101,7 +111,7 @@ class ItemCF:
     def load(cls, directory: str | Path) -> "ItemCF":
         directory = Path(directory)
         metadata = json.loads((directory / "model.json").read_text(encoding="utf-8"))
-        model = cls(metadata["n_neighbors"], metadata["shrinkage"])
+        model = cls(metadata["n_neighbors"], metadata["shrinkage"], metadata.get("half_life_days"))
         model.similarity_ = load_npz(directory / "similarity.npz").tocsr()
         model.n_users_, model.n_items_ = metadata["n_users"], metadata["n_items"]
         model.supported_items_, model.fit_seconds_ = metadata["supported_items"], metadata["fit_seconds"]

@@ -1,0 +1,40 @@
+{
+  "ItemCF": {
+    "selected_parameters": {
+      "n_neighbors": 50,
+      "shrinkage": 0.0,
+      "half_life_days": 90
+    },
+    "selection_metric": "NDCG@10 on validation",
+    "training_feedback": "binary rating >= relevance_threshold",
+    "random_seed": null
+  },
+  "LightFM": {
+    "selected_parameters": {
+      "loss": "logistic",
+      "user_features": "id_only",
+      "item_features": "id_only",
+      "no_components": 32,
+      "alpha": 1e-06,
+      "epochs": 10
+    },
+    "selection_metric": "NDCG@10 on validation",
+    "training_feedback": "Train rating >= relevance_threshold: +1; rating 1/2: -1; rating 3 and unknown omitted",
+    "random_seed": 42
+  },
+  "LRURec": {
+    "selected_parameters": {
+      "n_items": 3667,
+      "hidden_size": 32,
+      "num_blocks": 2,
+      "max_length": 100,
+      "dropout": 0.2,
+      "epochs": 50
+    },
+    "selection_metric": "Training epoch by validation next-item cross entropy; inference length by validation NDCG@10",
+    "training_feedback": "Full-catalog next-item cross entropy; padding excluded from classifier",
+    "random_seed": 42,
+    "training_max_length": 50,
+    "inference_max_length": 100
+  }
+}

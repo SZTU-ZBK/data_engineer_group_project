@@ -51,10 +51,10 @@ def evaluate_batched(model, contexts, movie_ids, batch_size):
 
 def run_lrurec(processed_dir, output_dir, epochs=(1, 3), hidden_size=32, max_length=50,
                batch_size=64, num_blocks=2, learning_rate=0.001, weight_decay=0.01,
-               dropout=0.2, seed=42, device="cpu", num_threads=2):
+               dropout=0.2, seed=42, device="cpu", num_threads=2, inference_length=100):
     epochs = sorted(set(epochs))
     if (not epochs or min(epochs) < 1 or min(batch_size, num_threads) < 1
-            or learning_rate <= 0 or weight_decay < 0):
+            or learning_rate <= 0 or weight_decay < 0 or inference_length < 1):
         raise ValueError("Use positive epochs/batch size/threads/rate and nonnegative weight decay.")
     processed_dir, output_dir = processed_dir.resolve(), output_dir.resolve()
     required = ["config.json", "movie_mapping.csv", "positive_interactions.npz",
@@ -143,9 +143,11 @@ def run_lrurec(processed_dir, output_dir, epochs=(1, 3), hidden_size=32, max_len
 
     # Fix the winner before loading test labels. Never refit on validation.
     model = LRURec.load(model_dir / "search_best", device=device)
+    model.max_length = inference_length
+    model.config["max_length"] = inference_length
+    validation_metrics, _ = evaluate_batched(model, validation, movie_ids, batch_size)
     test = pd.read_json(processed_dir / "test_contexts.jsonl", lines=True)
     test_metrics, per_user = evaluate_batched(model, test, movie_ids, batch_size)
-    validation_metrics = {name: selected[name] for name in test_metrics}
     model.save(model_dir)
     per_user.to_csv(model_dir / "test_per_user.csv", index=False)
     search = pd.DataFrame(trials)
@@ -163,6 +165,7 @@ def run_lrurec(processed_dir, output_dir, epochs=(1, 3), hidden_size=32, max_len
     run = {
         "algorithm": "LRURec", "reference": "https://arxiv.org/abs/2310.02367",
         "selected_parameters": {**model.config, "epochs": int(selected["epochs"])},
+        "training_max_length": max_length, "inference_max_length": inference_length,
         "epoch_checkpoints": epochs, "selection_metric": "minimum next-item validation cross entropy",
         "selected_validation_loss": selected["validation_loss"],
         "tie_break": "earlier epoch", "random_seed": seed,
@@ -179,7 +182,7 @@ def run_lrurec(processed_dir, output_dir, epochs=(1, 3), hidden_size=32, max_len
         "timestamp_ties": "Equal-timestamp adjacent targets ignored; history tie order is deterministic movie ID",
         "model_fit_partitions": ["train"], "refit_on_validation": False,
         "validation_history": config["validation_history"], "test_history": config["test_history"],
-        "history_use": f"Last {max_length} known positive movie tokens; recompute sequence state at inference",
+        "history_use": f"Last {inference_length} known positive movie tokens; recompute sequence state at inference",
         "candidate_protocol": "Shared full unseen training catalog and eligible users; no sampled evaluation negatives",
         "k_values": [5, 10], "metric_aggregation": "macro-average over eligible users; warm relevant targets",
         "implementation": "Complex stable diagonal LRU, 2x state width, residual FFN, tied embeddings; prefix doubling scan",

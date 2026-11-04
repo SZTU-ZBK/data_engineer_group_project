@@ -1,0 +1,73 @@
+{
+  "selection_metric": "validation NDCG@10, then Recall@10; keep baseline on exact ties",
+  "configurations": {
+    "ItemCF": {
+      "half_life_days": 90,
+      "n_neighbors": 50,
+      "shrinkage": 0.0,
+      "age_anchor": "latest known rating timestamp per user"
+    },
+    "LRURec": {
+      "training_length": 50,
+      "inference_length": 100,
+      "weights": "unchanged baseline epoch 50",
+      "retrained": false
+    },
+    "LightFM": {
+      "feature_set": "id_only",
+      "epochs": 10,
+      "reused": false,
+      "loss": "logistic",
+      "no_components": 32,
+      "alpha": 1e-06,
+      "seed": 42,
+      "fit_positive_labels": 225771,
+      "fit_negative_labels": 66930,
+      "identity_only_weight": 1.0,
+      "hybrid_identity_weight": 0.5
+    }
+  },
+  "validation_winners": {
+    "ItemCF": {
+      "algorithm": "ItemCF",
+      "variant": "time_decay",
+      "split": "validation",
+      "half_life_days": 90,
+      "users": 5776,
+      "Precision@5": 0.06755540166204987,
+      "Recall@5": 0.04586269287402921,
+      "NDCG@5": 0.0782869881512607,
+      "Precision@10": 0.059989612188365654,
+      "Recall@10": 0.07909174981385589,
+      "NDCG@10": 0.08471410399239956
+    },
+    "LRURec": {
+      "algorithm": "LRURec",
+      "variant": "fixed_weights_context",
+      "split": "validation",
+      "inference_length": 100,
+      "users": 5776,
+      "Precision@5": 0.11928670360110803,
+      "Recall@5": 0.11056215750079926,
+      "NDCG@5": 0.14635924751918827,
+      "Precision@10": 0.10155817174515236,
+      "Recall@10": 0.17864722567795793,
+      "NDCG@10": 0.16307873491575692
+    },
+    "LightFM": {
+      "algorithm": "LightFM",
+      "variant": "id_only",
+      "split": "validation",
+      "epochs": 10,
+      "reused": false,
+      "checkpoint_seconds": 12.904914299957454,
+      "users": 5776,
+      "Precision@5": 0.04439058171745152,
+      "Recall@5": 0.02334689865903935,
+      "NDCG@5": 0.0482767946878899,
+      "Precision@10": 0.039923822714681444,
+      "Recall@10": 0.040372191710843726,
+      "NDCG@10": 0.04974721125695448
+    }
+  }
+}

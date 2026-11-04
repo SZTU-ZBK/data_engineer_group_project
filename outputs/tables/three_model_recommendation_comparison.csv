@@ -1,91 +1,91 @@
-﻿"algorithm","user_id","rank","movie_id","title","genres","score","test_rating","relevant_in_test","seen_in_history"
-"itemcf","1","1","1198","Raiders of the Lost Ark (1981)","Action|Adventure","10.8170347213745",,"False","False"
-"itemcf","1","2","1196","Star Wars: Episode V - The Empire Strikes Back (1980)","Action|Adventure|Drama|Sci-Fi|War","10.26340675354",,"False","False"
-"itemcf","1","3","318","Shawshank Redemption, The (1994)","Drama","9.554856300354",,"False","False"
-"itemcf","1","4","593","Silence of the Lambs, The (1991)","Drama|Thriller","8.41802501678467",,"False","False"
-"itemcf","1","5","296","Pulp Fiction (1994)","Crime|Drama","6.78155469894409",,"False","False"
-"itemcf","1","6","2858","American Beauty (1999)","Comedy|Drama","6.48079299926758",,"False","False"
-"itemcf","1","7","1265","Groundhog Day (1993)","Comedy|Romance","6.38722038269043",,"False","False"
-"itemcf","1","8","1259","Stand by Me (1986)","Adventure|Comedy|Drama","6.34929084777832",,"False","False"
-"itemcf","1","9","1210","Star Wars: Episode VI - Return of the Jedi (1983)","Action|Adventure|Romance|Sci-Fi|War","6.27255439758301",,"False","False"
-"itemcf","1","10","2396","Shakespeare in Love (1998)","Comedy|Romance","6.03137302398682",,"False","False"
-"itemcf","2","1","260","Star Wars: Episode IV - A New Hope (1977)","Action|Adventure|Fantasy|Sci-Fi","13.6776676177979",,"False","False"
-"itemcf","2","2","608","Fargo (1996)","Crime|Drama|Thriller","13.2014875411987",,"False","False"
-"itemcf","2","3","527","Schindler's List (1993)","Drama|War","12.6878995895386",,"False","False"
-"itemcf","2","4","1036","Die Hard (1988)","Action|Thriller","12.1244421005249",,"False","False"
-"itemcf","2","5","858","Godfather, The (1972)","Action|Crime|Drama","11.8955917358398",,"False","False"
-"itemcf","2","6","296","Pulp Fiction (1994)","Crime|Drama","11.0170602798462",,"False","False"
-"itemcf","2","7","1617","L.A. Confidential (1997)","Crime|Film-Noir|Mystery|Thriller","10.3772287368774",,"False","False"
-"itemcf","2","8","1580","Men in Black (1997)","Action|Adventure|Comedy|Sci-Fi","10.3331460952759",,"False","False"
-"itemcf","2","9","1291","Indiana Jones and the Last Crusade (1989)","Action|Adventure","10.2334575653076",,"False","False"
-"itemcf","2","10","1097","E.T. the Extra-Terrestrial (1982)","Children's|Drama|Fantasy|Sci-Fi","10.0441789627075",,"False","False"
-"itemcf","3","1","1036","Die Hard (1988)","Action|Thriller","8.60007953643799",,"False","False"
-"itemcf","3","2","2000","Lethal Weapon (1987)","Action|Comedy|Crime|Drama","8.5764627456665",,"False","False"
-"itemcf","3","3","457","Fugitive, The (1993)","Action|Thriller","7.25087642669678",,"False","False"
-"itemcf","3","4","2571","Matrix, The (1999)","Action|Sci-Fi|Thriller","6.80687713623047",,"False","False"
-"itemcf","3","5","858","Godfather, The (1972)","Action|Crime|Drama","6.75072383880615",,"False","False"
-"itemcf","3","6","2028","Saving Private Ryan (1998)","Action|Drama|War","6.48941516876221",,"False","False"
-"itemcf","3","7","1","Toy Story (1995)","Animation|Children's|Comedy","6.48484802246094",,"False","False"
-"itemcf","3","8","2716","Ghostbusters (1984)","Comedy|Horror","6.43371152877808",,"False","False"
-"itemcf","3","9","592","Batman (1989)","Action|Adventure|Crime|Drama","6.36868906021118",,"False","False"
-"itemcf","3","10","110","Braveheart (1995)","Action|Drama|War","6.34616041183472",,"False","False"
-"lightfm","1","1","318","Shawshank Redemption, The (1994)","Drama","4.8305869102478",,"False","False"
-"lightfm","1","2","1262","Great Escape, The (1963)","Adventure|War","4.7750415802002",,"False","False"
-"lightfm","1","3","3468","Hustler, The (1961)","Drama","4.75710487365723",,"False","False"
-"lightfm","1","4","904","Rear Window (1954)","Mystery|Thriller","4.74921751022339",,"False","False"
-"lightfm","1","5","858","Godfather, The (1972)","Action|Crime|Drama","4.7477765083313",,"False","False"
-"lightfm","1","6","593","Silence of the Lambs, The (1991)","Drama|Thriller","4.7032790184021",,"False","False"
-"lightfm","1","7","1242","Glory (1989)","Action|Drama|War","4.66607475280762",,"False","False"
-"lightfm","1","8","1198","Raiders of the Lost Ark (1981)","Action|Adventure","4.65738201141357",,"False","False"
-"lightfm","1","9","1148","Wrong Trousers, The (1993)","Animation|Comedy","4.51896476745605",,"False","False"
-"lightfm","1","10","922","Sunset Blvd. (a.k.a. Sunset Boulevard) (1950)","Film-Noir","4.50490951538086",,"False","False"
-"lightfm","2","1","1262","Great Escape, The (1963)","Adventure|War","5.00065183639526",,"False","False"
-"lightfm","2","2","904","Rear Window (1954)","Mystery|Thriller","4.94127464294434",,"False","False"
-"lightfm","2","3","858","Godfather, The (1972)","Action|Crime|Drama","4.86163854598999",,"False","False"
-"lightfm","2","4","922","Sunset Blvd. (a.k.a. Sunset Boulevard) (1950)","Film-Noir","4.71641206741333",,"False","False"
-"lightfm","2","5","1242","Glory (1989)","Action|Drama|War","4.70357942581177",,"False","False"
-"lightfm","2","6","3435","Double Indemnity (1944)","Crime|Film-Noir","4.70115184783936",,"False","False"
-"lightfm","2","7","1269","Arsenic and Old Lace (1944)","Comedy|Mystery|Thriller","4.60746049880981",,"False","False"
-"lightfm","2","8","745","Close Shave, A (1995)","Animation|Comedy|Thriller","4.55060529708862",,"False","False"
-"lightfm","2","9","942","Laura (1944)","Crime|Film-Noir|Mystery","4.54399728775024",,"False","False"
-"lightfm","2","10","1250","Bridge on the River Kwai, The (1957)","Drama|War","4.5432333946228",,"False","False"
-"lightfm","3","1","1262","Great Escape, The (1963)","Adventure|War","5.15242719650269",,"False","False"
-"lightfm","3","2","904","Rear Window (1954)","Mystery|Thriller","5.10262870788574",,"False","False"
-"lightfm","3","3","3468","Hustler, The (1961)","Drama","5.05917072296143",,"False","False"
-"lightfm","3","4","858","Godfather, The (1972)","Action|Crime|Drama","5.05850076675415",,"False","False"
-"lightfm","3","5","318","Shawshank Redemption, The (1994)","Drama","5.05763292312622",,"False","False"
-"lightfm","3","6","1242","Glory (1989)","Action|Drama|War","4.93779754638672",,"False","False"
-"lightfm","3","7","922","Sunset Blvd. (a.k.a. Sunset Boulevard) (1950)","Film-Noir","4.85561466217041",,"False","False"
-"lightfm","3","8","3435","Double Indemnity (1944)","Crime|Film-Noir","4.84409046173096",,"False","False"
-"lightfm","3","9","745","Close Shave, A (1995)","Animation|Comedy|Thriller","4.80280494689941",,"False","False"
-"lightfm","3","10","1148","Wrong Trousers, The (1993)","Animation|Comedy","4.79456663131714",,"False","False"
-"lrurec","1","1","364","Lion King, The (1994)","Animation|Children's|Musical","6.37676286697388",,"False","False"
-"lrurec","1","2","1907","Mulan (1998)","Animation|Children's","4.57413816452026","4","True","False"
-"lrurec","1","3","34","Babe (1995)","Children's|Comedy|Drama","4.52129602432251",,"False","False"
-"lrurec","1","4","2355","Bug's Life, A (1998)","Animation|Children's|Comedy","4.35869359970093","5","True","False"
-"lrurec","1","5","596","Pinocchio (1940)","Animation|Children's","4.28398275375366",,"False","False"
-"lrurec","1","6","2081","Little Mermaid, The (1989)","Animation|Children's|Comedy|Musical|Romance","4.0393238067627",,"False","False"
-"lrurec","1","7","262","Little Princess, A (1995)","Children's|Drama","3.94377470016479",,"False","False"
-"lrurec","1","8","2078","Jungle Book, The (1967)","Animation|Children's|Comedy|Musical","3.77215313911438",,"False","False"
-"lrurec","1","9","480","Jurassic Park (1993)","Action|Adventure|Sci-Fi","3.75042462348938",,"False","False"
-"lrurec","1","10","590","Dances with Wolves (1990)","Adventure|Drama|Western","3.72817611694336",,"False","False"
-"lrurec","2","1","10","GoldenEye (1995)","Action|Adventure|Thriller","6.9276123046875",,"False","False"
-"lrurec","2","2","316","Stargate (1994)","Action|Adventure|Sci-Fi","6.11195468902588",,"False","False"
-"lrurec","2","3","292","Outbreak (1995)","Action|Drama|Thriller","5.9643759727478","3","False","False"
-"lrurec","2","4","733","Rock, The (1996)","Action|Adventure|Thriller","5.9252495765686",,"False","False"
-"lrurec","2","5","1608","Air Force One (1997)","Action|Thriller","5.85205459594727",,"False","False"
-"lrurec","2","6","1049","Ghost and the Darkness, The (1996)","Action|Adventure","5.38847017288208",,"False","False"
-"lrurec","2","7","1580","Men in Black (1997)","Action|Adventure|Comedy|Sci-Fi","5.31586217880249",,"False","False"
-"lrurec","2","8","329","Star Trek: Generations (1994)","Action|Adventure|Sci-Fi","5.28926038742065",,"False","False"
-"lrurec","2","9","494","Executive Decision (1996)","Action|Thriller","5.27401065826416",,"False","False"
-"lrurec","2","10","112","Rumble in the Bronx (1995)","Action|Adventure|Crime","5.25561046600342",,"False","False"
-"lrurec","3","1","1","Toy Story (1995)","Animation|Children's|Comedy","6.44693040847778",,"False","False"
-"lrurec","3","2","1234","Sting, The (1973)","Comedy|Crime","6.23350429534912",,"False","False"
-"lrurec","3","3","2918","Ferris Bueller's Day Off (1986)","Comedy","6.21698713302612",,"False","False"
-"lrurec","3","4","1307","When Harry Met Sally... (1989)","Comedy|Romance","6.16915798187256",,"False","False"
-"lrurec","3","5","1278","Young Frankenstein (1974)","Comedy|Horror","5.99663686752319",,"False","False"
-"lrurec","3","6","2791","Airplane! (1980)","Comedy","5.78351640701294",,"False","False"
-"lrurec","3","7","1080","Monty Python's Life of Brian (1979)","Comedy","5.7593469619751",,"False","False"
-"lrurec","3","8","2716","Ghostbusters (1984)","Comedy|Horror","5.64374399185181",,"False","False"
-"lrurec","3","9","34","Babe (1995)","Children's|Comedy|Drama","5.58405876159668",,"False","False"
-"lrurec","3","10","2174","Beetlejuice (1988)","Comedy|Fantasy","5.50822305679321",,"False","False"
+algorithm,user_id,rank,movie_id,title,genres,score,because_movie_id,because_title,because_similarity,relevant_in_test,test_rating,seen_in_history
+itemcf,1,1,1198,Raiders of the Lost Ark (1981),Action|Adventure,10.393272399902344,260.0,Star Wars: Episode IV - A New Hope (1977),0.6486570239067078,False,,False
+itemcf,1,2,1196,Star Wars: Episode V - The Empire Strikes Back (1980),Action|Adventure|Drama|Sci-Fi|War,9.86755084991455,260.0,Star Wars: Episode IV - A New Hope (1977),0.7288898825645447,False,,False
+itemcf,1,3,318,"Shawshank Redemption, The (1994)",Drama,9.181097984313965,527.0,Schindler's List (1993),0.6050970554351807,False,,False
+itemcf,1,4,593,"Silence of the Lambs, The (1991)",Drama|Thriller,8.078669548034668,608.0,Fargo (1996),0.5792477130889893,False,,False
+itemcf,1,5,296,Pulp Fiction (1994),Crime|Drama,6.513949871063232,608.0,Fargo (1996),0.6188305616378784,False,,False
+itemcf,1,6,2858,American Beauty (1999),Comedy|Drama,6.226354122161865,608.0,Fargo (1996),0.5259589552879333,False,,False
+itemcf,1,7,1265,Groundhog Day (1993),Comedy|Romance,6.15346097946167,1.0,Toy Story (1995),0.4916093051433563,False,,False
+itemcf,1,8,1259,Stand by Me (1986),Adventure|Comedy|Drama,6.094322681427002,2918.0,Ferris Bueller's Day Off (1986),0.4551181197166443,False,,False
+itemcf,1,9,1210,Star Wars: Episode VI - Return of the Jedi (1983),Action|Adventure|Romance|Sci-Fi|War,6.051167964935303,260.0,Star Wars: Episode IV - A New Hope (1977),0.6434814929962158,False,,False
+itemcf,1,10,2396,Shakespeare in Love (1998),Comedy|Romance,5.824245452880859,1.0,Toy Story (1995),0.437339723110199,False,,False
+itemcf,2,1,260,Star Wars: Episode IV - A New Hope (1977),Action|Adventure|Fantasy|Sci-Fi,13.676512718200684,1196.0,Star Wars: Episode V - The Empire Strikes Back (1980),0.7288898825645447,False,,False
+itemcf,2,2,608,Fargo (1996),Crime|Drama|Thriller,13.200183868408203,593.0,"Silence of the Lambs, The (1991)",0.5792477130889893,False,,False
+itemcf,2,3,527,Schindler's List (1993),Drama|War,12.686558723449707,318.0,"Shawshank Redemption, The (1994)",0.6050970554351807,False,,False
+itemcf,2,4,1036,Die Hard (1988),Action|Thriller,12.123682022094727,1198.0,Raiders of the Lost Ark (1981),0.5773163437843323,False,,False
+itemcf,2,5,858,"Godfather, The (1972)",Action|Crime|Drama,11.894325256347656,1198.0,Raiders of the Lost Ark (1981),0.5149632692337036,False,,False
+itemcf,2,6,296,Pulp Fiction (1994),Crime|Drama,11.016037940979004,318.0,"Shawshank Redemption, The (1994)",0.5703708529472351,False,,False
+itemcf,2,7,1617,L.A. Confidential (1997),Crime|Film-Noir|Mystery|Thriller,10.376261711120605,593.0,"Silence of the Lambs, The (1991)",0.5210672616958618,False,,False
+itemcf,2,8,1580,Men in Black (1997),Action|Adventure|Comedy|Sci-Fi,10.332603454589844,480.0,Jurassic Park (1993),0.5547071695327759,False,,False
+itemcf,2,9,1291,Indiana Jones and the Last Crusade (1989),Action|Adventure,10.232837677001953,1198.0,Raiders of the Lost Ark (1981),0.6409031748771667,False,,False
+itemcf,2,10,1097,E.T. the Extra-Terrestrial (1982),Children's|Drama|Fantasy|Sci-Fi,10.043217658996582,1196.0,Star Wars: Episode V - The Empire Strikes Back (1980),0.5318558216094971,False,,False
+itemcf,3,1,1036,Die Hard (1988),Action|Thriller,8.599562644958496,1198.0,Raiders of the Lost Ark (1981),0.5773163437843323,False,,False
+itemcf,3,2,2000,Lethal Weapon (1987),Action|Comedy|Crime|Drama,8.575982093811035,1291.0,Indiana Jones and the Last Crusade (1989),0.5001628994941711,False,,False
+itemcf,3,3,457,"Fugitive, The (1993)",Action|Thriller,7.250438213348389,1198.0,Raiders of the Lost Ark (1981),0.5032497644424438,False,,False
+itemcf,3,4,2571,"Matrix, The (1999)",Action|Sci-Fi|Thriller,6.80643892288208,1196.0,Star Wars: Episode V - The Empire Strikes Back (1980),0.59762042760849,False,,False
+itemcf,3,5,858,"Godfather, The (1972)",Action|Crime|Drama,6.750335216522217,260.0,Star Wars: Episode IV - A New Hope (1977),0.5198507308959961,False,,False
+itemcf,3,6,2028,Saving Private Ryan (1998),Action|Drama|War,6.489001274108887,1198.0,Raiders of the Lost Ark (1981),0.5158534646034241,False,,False
+itemcf,3,7,1,Toy Story (1995),Animation|Children's|Comedy,6.4844746589660645,1197.0,"Princess Bride, The (1987)",0.4452213943004608,False,,False
+itemcf,3,8,2716,Ghostbusters (1984),Comedy|Horror,6.433342933654785,1196.0,Star Wars: Episode V - The Empire Strikes Back (1980),0.46490535140037537,False,,False
+itemcf,3,9,592,Batman (1989),Action|Adventure|Crime|Drama,6.368311882019043,1291.0,Indiana Jones and the Last Crusade (1989),0.5243445038795471,False,,False
+itemcf,3,10,110,Braveheart (1995),Action|Drama|War,6.345760345458984,1196.0,Star Wars: Episode V - The Empire Strikes Back (1980),0.49244382977485657,False,,False
+lightfm,1,1,1198,Raiders of the Lost Ark (1981),Action|Adventure,3.5721724033355713,,,,False,,False
+lightfm,1,2,318,"Shawshank Redemption, The (1994)",Drama,3.5198118686676025,,,,False,,False
+lightfm,1,3,593,"Silence of the Lambs, The (1991)",Drama|Thriller,3.4225590229034424,,,,False,,False
+lightfm,1,4,858,"Godfather, The (1972)",Action|Crime|Drama,3.408327102661133,,,,False,,False
+lightfm,1,5,457,"Fugitive, The (1993)",Action|Thriller,3.4041593074798584,,,,False,,False
+lightfm,1,6,1242,Glory (1989),Action|Drama|War,3.2309064865112305,,,,False,,False
+lightfm,1,7,50,"Usual Suspects, The (1995)",Crime|Thriller,3.230635166168213,,,,False,,False
+lightfm,1,8,904,Rear Window (1954),Mystery|Thriller,3.1554067134857178,,,,False,,False
+lightfm,1,9,1234,"Sting, The (1973)",Comedy|Crime,3.092198610305786,,,,False,,False
+lightfm,1,10,1262,"Great Escape, The (1963)",Adventure|War,3.0890328884124756,,,,False,,False
+lightfm,2,1,2762,"Sixth Sense, The (1999)",Thriller,2.9277098178863525,,,,False,,False
+lightfm,2,2,1270,Back to the Future (1985),Comedy|Sci-Fi,2.750195264816284,,,,False,,False
+lightfm,2,3,260,Star Wars: Episode IV - A New Hope (1977),Action|Adventure|Fantasy|Sci-Fi,2.7484066486358643,,,,False,,False
+lightfm,2,4,858,"Godfather, The (1972)",Action|Crime|Drama,2.7423629760742188,,,,False,,False
+lightfm,2,5,1242,Glory (1989),Action|Drama|War,2.669325351715088,,,,False,,False
+lightfm,2,6,1240,"Terminator, The (1984)",Action|Sci-Fi|Thriller,2.639089584350586,,,,False,,False
+lightfm,2,7,527,Schindler's List (1993),Drama|War,2.6307451725006104,,,,False,,False
+lightfm,2,8,1234,"Sting, The (1973)",Comedy|Crime,2.597428560256958,,,,False,,False
+lightfm,2,9,1704,Good Will Hunting (1997),Drama,2.5950305461883545,,,,False,,False
+lightfm,2,10,1291,Indiana Jones and the Last Crusade (1989),Action|Adventure,2.562385082244873,,,,False,,False
+lightfm,3,1,457,"Fugitive, The (1993)",Action|Thriller,3.0481064319610596,,,,False,,False
+lightfm,3,2,318,"Shawshank Redemption, The (1994)",Drama,3.0137016773223877,,,,False,,False
+lightfm,3,3,2762,"Sixth Sense, The (1999)",Thriller,2.9110684394836426,,,,False,,False
+lightfm,3,4,858,"Godfather, The (1972)",Action|Crime|Drama,2.8039016723632812,,,,False,,False
+lightfm,3,5,1242,Glory (1989),Action|Drama|War,2.7087056636810303,,,,False,,False
+lightfm,3,6,527,Schindler's List (1993),Drama|War,2.664879083633423,,,,False,,False
+lightfm,3,7,1240,"Terminator, The (1984)",Action|Sci-Fi|Thriller,2.6639606952667236,,,,False,,False
+lightfm,3,8,50,"Usual Suspects, The (1995)",Crime|Thriller,2.6311609745025635,,,,False,,False
+lightfm,3,9,2028,Saving Private Ryan (1998),Action|Drama|War,2.6110360622406006,,,,False,,False
+lightfm,3,10,904,Rear Window (1954),Mystery|Thriller,2.6086182594299316,,,,False,,False
+lrurec,1,1,364,"Lion King, The (1994)",Animation|Children's|Musical,6.376762866973877,,,,False,,False
+lrurec,1,2,1907,Mulan (1998),Animation|Children's,4.574138164520264,,,,True,4.0,False
+lrurec,1,3,34,Babe (1995),Children's|Comedy|Drama,4.52129602432251,,,,False,,False
+lrurec,1,4,2355,"Bug's Life, A (1998)",Animation|Children's|Comedy,4.358693599700928,,,,True,5.0,False
+lrurec,1,5,596,Pinocchio (1940),Animation|Children's,4.283982753753662,,,,False,,False
+lrurec,1,6,2081,"Little Mermaid, The (1989)",Animation|Children's|Comedy|Musical|Romance,4.039323806762695,,,,False,,False
+lrurec,1,7,262,"Little Princess, A (1995)",Children's|Drama,3.943774700164795,,,,False,,False
+lrurec,1,8,2078,"Jungle Book, The (1967)",Animation|Children's|Comedy|Musical,3.77215313911438,,,,False,,False
+lrurec,1,9,480,Jurassic Park (1993),Action|Adventure|Sci-Fi,3.75042462348938,,,,False,,False
+lrurec,1,10,590,Dances with Wolves (1990),Adventure|Drama|Western,3.7281761169433594,,,,False,,False
+lrurec,2,1,10,GoldenEye (1995),Action|Adventure|Thriller,6.934459686279297,,,,False,,False
+lrurec,2,2,316,Stargate (1994),Action|Adventure|Sci-Fi,6.130296230316162,,,,False,,False
+lrurec,2,3,292,Outbreak (1995),Action|Drama|Thriller,5.982062339782715,,,,False,3.0,False
+lrurec,2,4,733,"Rock, The (1996)",Action|Adventure|Thriller,5.919721603393555,,,,False,,False
+lrurec,2,5,1608,Air Force One (1997),Action|Thriller,5.865396022796631,,,,False,,False
+lrurec,2,6,1049,"Ghost and the Darkness, The (1996)",Action|Adventure,5.395989418029785,,,,False,,False
+lrurec,2,7,494,Executive Decision (1996),Action|Thriller,5.302736282348633,,,,False,,False
+lrurec,2,8,329,Star Trek: Generations (1994),Action|Adventure|Sci-Fi,5.302108287811279,,,,False,,False
+lrurec,2,9,1580,Men in Black (1997),Action|Adventure|Comedy|Sci-Fi,5.3018479347229,,,,False,,False
+lrurec,2,10,112,Rumble in the Bronx (1995),Action|Adventure|Crime,5.240743160247803,,,,False,,False
+lrurec,3,1,1,Toy Story (1995),Animation|Children's|Comedy,6.446930408477783,,,,False,,False
+lrurec,3,2,1234,"Sting, The (1973)",Comedy|Crime,6.233504295349121,,,,False,,False
+lrurec,3,3,2918,Ferris Bueller's Day Off (1986),Comedy,6.216987133026123,,,,False,,False
+lrurec,3,4,1307,When Harry Met Sally... (1989),Comedy|Romance,6.169157981872559,,,,False,,False
+lrurec,3,5,1278,Young Frankenstein (1974),Comedy|Horror,5.996636867523193,,,,False,,False
+lrurec,3,6,2791,Airplane! (1980),Comedy,5.7835164070129395,,,,False,,False
+lrurec,3,7,1080,Monty Python's Life of Brian (1979),Comedy,5.759346961975098,,,,False,,False
+lrurec,3,8,2716,Ghostbusters (1984),Comedy|Horror,5.643743991851807,,,,False,,False
+lrurec,3,9,34,Babe (1995),Children's|Comedy|Drama,5.58405876159668,,,,False,,False
+lrurec,3,10,2174,Beetlejuice (1988),Comedy|Fantasy,5.508223056793213,,,,False,,False

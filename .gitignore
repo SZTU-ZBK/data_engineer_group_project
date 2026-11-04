@@ -227,3 +227,6 @@ __marimo__/
 /data/ml-1m/
 /data/processed/
 /outputs/models/
+
+# Local duplicate table snapshots; historical runs and source remain versioned.
+/outputs/experiments/**/pre_promotion_tables/

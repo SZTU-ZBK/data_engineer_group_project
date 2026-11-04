@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix
 
-from src.lightfm_features import add_identity_features, build_enriched_features, split_feature_history
+from src.lightfm_features import add_identity_features, build_enriched_features, feature_variant, split_feature_history
 from src.models.lightfm import LightFMRecommender
 
 
@@ -26,6 +26,15 @@ class EnrichedFeatureTests(unittest.TestCase):
         return build_enriched_features(self.users, self.user_meta, self.movies, self.movie_meta,
                                         self.genres, ["Action", "Drama"],
                                         self.history if history is None else history)
+
+    def test_default_feature_variant_is_pure_identity(self):
+        features = feature_variant(self.build(), self.users.user_id, self.movies.movie_id)
+        np.testing.assert_array_equal(features.users.toarray(), np.eye(2))
+        np.testing.assert_array_equal(features.items.toarray(), np.eye(3))
+        self.assertEqual(features.user_names, ["user_id:10", "user_id:30"])
+        static = feature_variant(self.build(), self.users.user_id, self.movies.movie_id, "id_static")
+        self.assertFalse(any(name.startswith("preferred_") for name in static.user_names))
+        self.assertFalse(any(name.startswith("history_") for name in static.item_names))
 
     def test_timestamp_groups_keep_feature_history_disjoint_from_fit_targets(self):
         train = pd.DataFrame({"event_id": range(7), "user_id": [10, 10, 10, 10, 30, 30, 80],

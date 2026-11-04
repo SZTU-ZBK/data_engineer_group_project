@@ -19,7 +19,6 @@ validation_candidates_mismatches,0
 validation_eligibility_mismatches,0
 validation_seen_recommendations_mismatches,0
 validation_aggregate_precision_mismatch,0
-validation_aggregate_mean_hits_mismatch,0
 test_context_user_mismatches,0
 test_history_mismatches,0
 test_tokens_mismatches,0
@@ -27,7 +26,5 @@ test_targets_mismatches,0
 test_candidates_mismatches,0
 test_eligibility_mismatches,0
 test_seen_recommendations_mismatches,0
-test_independently_counted_hits_mismatches,0
 test_independently_counted_precision_mismatches,0
 test_aggregate_precision_mismatch,0
-test_aggregate_mean_hits_mismatch,0

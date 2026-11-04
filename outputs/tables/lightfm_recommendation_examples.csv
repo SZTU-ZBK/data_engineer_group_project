@@ -1,31 +1,31 @@
-user_id,rank,movie_id,title,genres,score
-1,1,318,"Shawshank Redemption, The (1994)",Drama,4.830586910247803
-1,2,1262,"Great Escape, The (1963)",Adventure|War,4.775041580200195
-1,3,3468,"Hustler, The (1961)",Drama,4.757104873657227
-1,4,904,Rear Window (1954),Mystery|Thriller,4.749217510223389
-1,5,858,"Godfather, The (1972)",Action|Crime|Drama,4.747776508331299
-1,6,593,"Silence of the Lambs, The (1991)",Drama|Thriller,4.7032790184021
-1,7,1242,Glory (1989),Action|Drama|War,4.666074752807617
-1,8,1198,Raiders of the Lost Ark (1981),Action|Adventure,4.657382011413574
-1,9,1148,"Wrong Trousers, The (1993)",Animation|Comedy,4.518964767456055
-1,10,922,Sunset Blvd. (a.k.a. Sunset Boulevard) (1950),Film-Noir,4.504909515380859
-2,1,1262,"Great Escape, The (1963)",Adventure|War,5.000651836395264
-2,2,904,Rear Window (1954),Mystery|Thriller,4.941274642944336
-2,3,858,"Godfather, The (1972)",Action|Crime|Drama,4.86163854598999
-2,4,922,Sunset Blvd. (a.k.a. Sunset Boulevard) (1950),Film-Noir,4.71641206741333
-2,5,1242,Glory (1989),Action|Drama|War,4.703579425811768
-2,6,3435,Double Indemnity (1944),Crime|Film-Noir,4.7011518478393555
-2,7,1269,Arsenic and Old Lace (1944),Comedy|Mystery|Thriller,4.6074604988098145
-2,8,745,"Close Shave, A (1995)",Animation|Comedy|Thriller,4.550605297088623
-2,9,942,Laura (1944),Crime|Film-Noir|Mystery,4.543997287750244
-2,10,1250,"Bridge on the River Kwai, The (1957)",Drama|War,4.543233394622803
-3,1,1262,"Great Escape, The (1963)",Adventure|War,5.1524271965026855
-3,2,904,Rear Window (1954),Mystery|Thriller,5.102628707885742
-3,3,3468,"Hustler, The (1961)",Drama,5.059170722961426
-3,4,858,"Godfather, The (1972)",Action|Crime|Drama,5.05850076675415
-3,5,318,"Shawshank Redemption, The (1994)",Drama,5.057632923126221
-3,6,1242,Glory (1989),Action|Drama|War,4.937797546386719
-3,7,922,Sunset Blvd. (a.k.a. Sunset Boulevard) (1950),Film-Noir,4.85561466217041
-3,8,3435,Double Indemnity (1944),Crime|Film-Noir,4.844090461730957
-3,9,745,"Close Shave, A (1995)",Animation|Comedy|Thriller,4.802804946899414
-3,10,1148,"Wrong Trousers, The (1993)",Animation|Comedy,4.794566631317139
+user_id,rank,movie_id,title,genres,score,relevant_in_test
+1,1,1198,Raiders of the Lost Ark (1981),Action|Adventure,3.5721724033355713,False
+1,2,318,"Shawshank Redemption, The (1994)",Drama,3.5198118686676025,False
+1,3,593,"Silence of the Lambs, The (1991)",Drama|Thriller,3.4225590229034424,False
+1,4,858,"Godfather, The (1972)",Action|Crime|Drama,3.408327102661133,False
+1,5,457,"Fugitive, The (1993)",Action|Thriller,3.4041593074798584,False
+1,6,1242,Glory (1989),Action|Drama|War,3.2309064865112305,False
+1,7,50,"Usual Suspects, The (1995)",Crime|Thriller,3.230635166168213,False
+1,8,904,Rear Window (1954),Mystery|Thriller,3.1554067134857178,False
+1,9,1234,"Sting, The (1973)",Comedy|Crime,3.092198610305786,False
+1,10,1262,"Great Escape, The (1963)",Adventure|War,3.0890328884124756,False
+2,1,2762,"Sixth Sense, The (1999)",Thriller,2.9277098178863525,False
+2,2,1270,Back to the Future (1985),Comedy|Sci-Fi,2.750195264816284,False
+2,3,260,Star Wars: Episode IV - A New Hope (1977),Action|Adventure|Fantasy|Sci-Fi,2.7484066486358643,False
+2,4,858,"Godfather, The (1972)",Action|Crime|Drama,2.7423629760742188,False
+2,5,1242,Glory (1989),Action|Drama|War,2.669325351715088,False
+2,6,1240,"Terminator, The (1984)",Action|Sci-Fi|Thriller,2.639089584350586,False
+2,7,527,Schindler's List (1993),Drama|War,2.6307451725006104,False
+2,8,1234,"Sting, The (1973)",Comedy|Crime,2.597428560256958,False
+2,9,1704,Good Will Hunting (1997),Drama,2.5950305461883545,False
+2,10,1291,Indiana Jones and the Last Crusade (1989),Action|Adventure,2.562385082244873,False
+3,1,457,"Fugitive, The (1993)",Action|Thriller,3.0481064319610596,False
+3,2,318,"Shawshank Redemption, The (1994)",Drama,3.0137016773223877,False
+3,3,2762,"Sixth Sense, The (1999)",Thriller,2.9110684394836426,False
+3,4,858,"Godfather, The (1972)",Action|Crime|Drama,2.8039016723632812,False
+3,5,1242,Glory (1989),Action|Drama|War,2.7087056636810303,False
+3,6,527,Schindler's List (1993),Drama|War,2.664879083633423,False
+3,7,1240,"Terminator, The (1984)",Action|Sci-Fi|Thriller,2.6639606952667236,False
+3,8,50,"Usual Suspects, The (1995)",Crime|Thriller,2.6311609745025635,False
+3,9,2028,Saving Private Ryan (1998),Action|Drama|War,2.6110360622406006,False
+3,10,904,Rear Window (1954),Mystery|Thriller,2.6086182594299316,False

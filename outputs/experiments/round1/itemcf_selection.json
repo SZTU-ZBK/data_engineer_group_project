@@ -1,0 +1,6 @@
+{
+  "half_life_days": 90,
+  "n_neighbors": 50,
+  "shrinkage": 0.0,
+  "age_anchor": "latest known rating timestamp per user"
+}

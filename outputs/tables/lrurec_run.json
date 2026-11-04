@@ -5,7 +5,7 @@
     "n_items": 3667,
     "hidden_size": 32,
     "num_blocks": 2,
-    "max_length": 50,
+    "max_length": 100,
     "dropout": 0.2,
     "epochs": 50
   },
@@ -61,7 +61,7 @@
     49,
     50
   ],
-  "selection_metric": "minimum next-item validation cross entropy",
+  "selection_metric": "Training epoch by validation next-item cross entropy; inference length by validation NDCG@10",
   "selected_validation_loss": 6.232118546781634,
   "tie_break": "earlier epoch",
   "random_seed": 42,
@@ -90,7 +90,7 @@
     "train",
     "validation"
   ],
-  "history_use": "Last 50 known positive movie tokens; recompute sequence state at inference",
+  "history_use": "Last 100 known positive movie tokens; weights trained with length 50",
   "candidate_protocol": "Shared full unseen training catalog and eligible users; no sampled evaluation negatives",
   "k_values": [
     5,
@@ -110,33 +110,21 @@
   },
   "validation_metrics": {
     "users": 5776,
-    "MeanHits@5": 0.5967797783933518,
-    "Precision@5": 0.11935595567867037,
-    "HitRate@5": 0.4039127423822715,
-    "Recall@5": 0.11061928902761921,
-    "NDCG@5": 0.14649159969302594,
-    "CatalogCoverage@5": 0.44505044995909465,
-    "MeanHits@10": 1.0143698060941828,
-    "Precision@10": 0.1014369806094183,
-    "HitRate@10": 0.5424168975069252,
-    "Recall@10": 0.17855088061604002,
-    "NDCG@10": 0.1630446690329694,
-    "CatalogCoverage@10": 0.5571311698936461
+    "Precision@5": 0.119286703601108,
+    "Recall@5": 0.1105621575007992,
+    "NDCG@5": 0.1463592475191882,
+    "Precision@10": 0.1015581717451523,
+    "Recall@10": 0.1786472256779579,
+    "NDCG@10": 0.1630787349157569
   },
   "test_metrics": {
     "users": 5765,
-    "MeanHits@5": 0.5271465741543799,
-    "Precision@5": 0.10542931483087596,
-    "HitRate@5": 0.36877710320901996,
-    "Recall@5": 0.09762219656763532,
-    "NDCG@5": 0.13010519808141086,
-    "CatalogCoverage@5": 0.4562312517043905,
-    "MeanHits@10": 0.8921075455333911,
-    "Precision@10": 0.08921075455333911,
-    "HitRate@10": 0.5033824804856895,
-    "Recall@10": 0.1581119765028256,
-    "NDCG@10": 0.14388415530856233,
-    "CatalogCoverage@10": 0.5680392691573494
+    "Precision@5": 0.1054293148308759,
+    "Recall@5": 0.0976214769958157,
+    "NDCG@5": 0.1300963833336247,
+    "Precision@10": 0.0893148308759757,
+    "Recall@10": 0.1582774910053488,
+    "NDCG@10": 0.1439807707752975
   },
   "software": {
     "python": "3.11.17",
@@ -144,5 +132,14 @@
     "pandas": "3.0.6",
     "torch": "2.14.1+cpu"
   },
-  "total_seconds": 1606.3642153999535
+  "total_seconds": 1606.3642153999535,
+  "configuration_selection": "Validation NDCG@10, then Recall@10; test evaluated after freezing configurations",
+  "training_max_length": 50,
+  "inference_max_length": 100,
+  "epoch_selection_metric": "minimum next-item validation cross entropy",
+  "inference_length_grid": [
+    25,
+    50,
+    100
+  ]
 }

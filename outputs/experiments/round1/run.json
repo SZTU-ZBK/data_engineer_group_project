@@ -1,0 +1,115 @@
+{
+  "selection_metric": "validation NDCG@10, then Recall@10; keep baseline on exact ties",
+  "configurations": {
+    "ItemCF": {
+      "half_life_days": 90,
+      "n_neighbors": 50,
+      "shrinkage": 0.0,
+      "age_anchor": "latest known rating timestamp per user"
+    },
+    "LRURec": {
+      "training_length": 50,
+      "inference_length": 100,
+      "weights": "unchanged baseline epoch 50",
+      "retrained": false
+    },
+    "LightFM": {
+      "feature_set": "id_only",
+      "epochs": 10,
+      "reused": false,
+      "loss": "logistic",
+      "no_components": 32,
+      "alpha": 1e-06,
+      "seed": 42,
+      "fit_positive_labels": 225771,
+      "fit_negative_labels": 66930,
+      "identity_only_weight": 1.0,
+      "hybrid_identity_weight": 0.5
+    }
+  },
+  "validation_winners": {
+    "ItemCF": {
+      "algorithm": "ItemCF",
+      "variant": "time_decay",
+      "split": "validation",
+      "half_life_days": 90,
+      "users": 5776,
+      "Precision@5": 0.06755540166204987,
+      "Recall@5": 0.04586269287402921,
+      "NDCG@5": 0.0782869881512607,
+      "Precision@10": 0.059989612188365654,
+      "Recall@10": 0.07909174981385589,
+      "NDCG@10": 0.08471410399239956
+    },
+    "LRURec": {
+      "algorithm": "LRURec",
+      "variant": "fixed_weights_context",
+      "split": "validation",
+      "inference_length": 100,
+      "users": 5776,
+      "Precision@5": 0.11928670360110803,
+      "Recall@5": 0.11056215750079926,
+      "NDCG@5": 0.14635924751918827,
+      "Precision@10": 0.10155817174515236,
+      "Recall@10": 0.17864722567795793,
+      "NDCG@10": 0.16307873491575692
+    },
+    "LightFM": {
+      "algorithm": "LightFM",
+      "variant": "id_only",
+      "split": "validation",
+      "epochs": 10,
+      "reused": false,
+      "checkpoint_seconds": 12.904914299957454,
+      "users": 5776,
+      "Precision@5": 0.04439058171745152,
+      "Recall@5": 0.02334689865903935,
+      "NDCG@5": 0.0482767946878899,
+      "Precision@10": 0.039923822714681444,
+      "Recall@10": 0.040372191710843726,
+      "NDCG@10": 0.04974721125695448
+    }
+  },
+  "completed": true,
+  "elapsed_seconds": 145.7657451000996,
+  "input_sha256": {
+    "config.json": "0393d3289ebc0b1dc048a462441dca2fbd0cf808d6c0504dd7b043677a16e319",
+    "movie_mapping.csv": "4a86f3fcfcf2aa414828df4e2ba58d5b22a7516e73850eb54f989bd5ce68e8fb",
+    "positive_interactions.npz": "ed3350465c78bebbc441244eb8219ba05ce6750b9c5d08bab41b3c68aaec413c",
+    "validation_contexts.jsonl": "f07216b1bd535676ac7c589ede504839eac240ec844f9e1b01e557c76bd05563",
+    "test_contexts.jsonl": "24901643b816817258213b8d03ad708929ff0f9778934c8a6c3be3b183c765dc",
+    "user_mapping.csv": "dfd094e3a3f9741cbbaee43fb2042315c21b0d52279acf287f28365dbb4c2c53",
+    "genre_features.npz": "87580f91b26ef4fccfc41b6c3335b07c5596e95efeed96b41b49fe9ccf9b3e34",
+    "genre_names.json": "22c341032856d94e085918383588156a11aa5c704e82e398d8913f4b50026e28",
+    "train.csv": "b36ba472bac2398736b1647acf9bb1215b015d4b551dd2c673452b1249996f49",
+    "explicit_ratings.npz": "6009fa30184b6a182b06dbb124d2da098bdb52b62e307a2fbbb84657469e235e",
+    "train_sequences.jsonl": "e080b77e950ef27b1f6621932da8409972ee8ec19c7e5d45e3ae3850c9dedbd1",
+    "validation.csv": "cf0b3e633d2d7ac4bb99aa8b8a191d99b492d60c35b788531fd2081b06f4f419"
+  },
+  "baseline_artifact_sha256": {
+    "outputs/tables/itemcf_run.json": "85ab394a1069de5196c09cda76b8d3b52ca44589d845f766fc58530cd21a749a",
+    "outputs/tables/lightfm_run.json": "5ec21680cfdc6ce0b98832237aefb44d69d4c870c94e03d6965347a8778ef15e",
+    "outputs/tables/lrurec_run.json": "d1d9a8f4878e4297c7e7eb438b86d7f3cbd380e8dc5b04024afa449e8a4d3366",
+    "outputs/models/lrurec/weights.pt": "49a7343a010fdeae3270842cf66fb61d151a1dda37ba2dd3241729dc2613fa5b",
+    "outputs/models/lightfm/representations.npz": "066c1e302dbe7c103a39d7a16b8d1fb7e76e2c1dae7c6e0b7208b15941d60cd6",
+    "outputs/models/itemcf/similarity.npz": "9a7d42b8e9d79e01452817adfde47f87a0b6233161c027adf04ca40bb85b4577"
+  },
+  "baseline_artifacts_unchanged": true,
+  "metric_names": [
+    "Precision@5",
+    "Recall@5",
+    "NDCG@5",
+    "Precision@10",
+    "Recall@10",
+    "NDCG@10"
+  ],
+  "lrurec_scope": "Inference context ablation at fixed weights trained with length 50, not a retraining study",
+  "lightfm_scope": "Same suffix fitting labels, seed, optimizer parameters and epoch grid; identity scaling follows feature normalization",
+  "time_decay_grid_days": [
+    null,
+    1,
+    7,
+    30,
+    90
+  ]
+}

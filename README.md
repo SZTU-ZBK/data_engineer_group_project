@@ -2,6 +2,8 @@
 
 CS5481 小组项目一。实现数据探索、预处理，以及 ItemCF、LightFM 和 LRURec 的训练、评估与推荐。
 
+PPT 图片、指标说明及简要实验分析见 [output 资料包](output/README.md)。重新生成图表：`python scripts/build_ppt_materials.py`。
+
 ## 环境与运行
 
 可使用预编译的 Conda 环境，在项目根目录执行（使用独立名称避免与已有环境混用）：
@@ -42,6 +44,7 @@ python -m jupyterlab
 src/data.py                         数据读取、质量检查、清洗、时间划分与相关性标签
 src/features.py                     训练期特征、稀疏矩阵、行为序列与共享评估上下文
 src/models/item_cf.py               正反馈 ItemCF、模型保存与恢复
+src/itemcf_history.py               按推荐阶段构造时间衰减历史权重
 src/models/lightfm.py               LightFM 特征编码、向量导出与推荐评分
 src/lightfm_features.py             类型/年代偏好、电影统计特征与独立的特征历史划分
 src/lightfm_diagnostics.py          已知评分交叉熵及模型维度对比曲线
@@ -49,7 +52,7 @@ src/models/lrurec.py                LRURec 线性递推模型、序列评分与�
 src/sequences.py                    下一部电影训练窗口与序列补齐
 src/train_lrurec.py                 LRURec 训练、验证选轮数与共享评估
 src/train_lightfm.py                官方 LightFM 训练、验证选参及结果比较
-src/evaluate.py                     共享排名、Precision/Recall/NDCG、命中统计与覆盖率
+src/evaluate.py                     共享排名及 Precision/Recall/NDCG 评估
 src/recommend.py                    电影推荐、标题/类型展示与相似历史解释
 train.py                           验证集调参、选定模型的最终测试与结果导出
 recommend.py                       按用户 ID 输出推荐的命令行入口
@@ -58,11 +61,17 @@ notebooks/01_data_analysis.ipynb     数据概况、探索总览图与预处理
 notebooks/02_itemcf.ipynb            ItemCF 原理、搜索结果、评估及用户推荐演示
 notebooks/03_lightfm.ipynb           LightFM 原理、核心结果与双算法推荐比较
 notebooks/04_lrurec.ipynb            LRURec 原理、核心结果与三算法推荐比较
-outputs/figures/                    Notebook 自动生成的 PNG 图表
-outputs/tables/                     Notebook 自动生成的统计汇总 CSV
+docs/ppt/                          PPT 文字稿源文件
+scripts/build_ppt_materials.py      重建当前 PPT 图片、数据和压缩包
+scripts/experiments/               历史实验专用脚本
+output/                            仅当前方案的 PPT 交付目录
+outputs/figures/                   当前数据概况图
+outputs/tables/                    当前模型与预处理结果
+outputs/experiments/               历史实验及旧图归档
 data/processed/                    本地模型输入与配置，不纳入 Git
 tests/test_preprocessing.py         时间边界、留出数据隔离和候选过滤测试
 tests/test_itemcf.py                相似度手算、排名指标、推荐过滤和保存恢复测试
+tests/test_itemcf_history.py        正式时间权重与特征隔离逻辑测试
 requirements.txt                    数据阶段的依赖
 environment.yml                     Conda 环境依赖
 ```
@@ -89,7 +98,7 @@ print(dataset_summary(tables))
 一张总览图展示评分、用户活跃度、电影热度和类型分布，并简要说明平均评分、高分比例及交互稀疏度。
 图表保存为 `outputs/figures/01_data_overview.png`，预处理汇总表保存到 `outputs/tables/`。
 图表使用英文标签，分析说明使用中文，数值由当前数据计算。
-早期探索与诊断图仍保留在输出目录，精简后的 Notebook 不再展示或刷新这些旧图表。
+早期探索与诊断图归档至 `outputs/experiments/legacy_figures/`，当前 Notebook 不再刷新这些旧图。
 当前分析使用完整数据，仅用于描述性探索；这些统计不作为训练特征直接输入模型。
 未评分表示未知偏好，不能据此直接判定用户不喜欢电影。
 当前探索和划分均不使用随机过程，配置中的 `random_seed` 为 `null`；模型训练时另行设置种子。
@@ -144,24 +153,25 @@ python recommend.py --user-id 1 --stage test --top-k 5
 
 打开 `notebooks/02_itemcf.ipynb` 查看原理、已保存的搜索与评估结果，修改 `USER_ID`
 和 `TOP_K` 后即可重新生成对应用户的推荐；Notebook 不会自动重复调参或测试。
-Notebook 只展示验证选参表、Precision/Recall/NDCG@10、平均命中数和电影标题/类型，默认推荐 5 部。
-完整审计和命中分布属于可选分析，另行运行 `python audit_itemcf.py`，不再作为 Notebook 的前置步骤。
+Notebook 展示验证选参表、Precision/Recall/NDCG@10 和电影标题/类型，默认推荐 5 部。
+完整审计属于可选分析，另行运行 `python audit_itemcf.py`，不再作为 Notebook 的前置步骤。
 
 本实现是**基于正反馈的 ItemCF 排名基线**：用训练集中评分至少 4 分的二值矩阵计算
 电影共现次数与余弦相似度，可乘以 `共现次数 / (共现次数 + shrinkage)` 进行收缩。
-去掉自身相似度，每部历史电影仅保留最相似的若干邻居，再累加用户已知正反馈电影对
+去掉自身相似度，每部历史电影仅保留最相似的若干邻居，再按时间权重累加用户已知正反馈电影对
 候选电影的相似度贡献。分数是排序值，不是预测星级。电影类型和人口属性不参与这版 ItemCF。
 邻居截断按来源电影逐行执行，截断后的相似度矩阵可能不对称。
 
-默认搜索 `n_neighbors = [20, 50, 100]` 和 `shrinkage = [0, 10, 50]` 的 9 种参数组合，
+当前默认固定 `n_neighbors = 50`、`shrinkage = 0`，并采用 90 天正反馈历史半衰期。
+评分贡献乘以 `2**(-age_days/90)`，时间锚点为用户当时最近的已知评分；可通过 `--half-life-days 0` 关闭衰减。
+显式指定 `--neighbors` 和 `--shrinkage` 可扩展验证网格，
 以验证集 NDCG@10 选参；同分依次比较 Recall@10、较小邻居数与较小收缩参数。
 选定后仅评估该配置的测试表现，模型相似度仍只根据训练集拟合。
 可通过 `--neighbors 20 50 --shrinkage 0 10` 指定搜索范围；参数变体属于同一种算法。
 
 评估使用共享用户集合、完整未评分训练目录，不采样评估负例；报告按用户宏平均的
-Precision@5/10、Recall@5/10、NDCG@5/10、平均命中数（MeanHits），
-至少命中一部的用户比例（HitRate），以及推荐电影数占训练目录的覆盖率。
-Precision = 命中数 / K，MeanHits = K × Precision；HitRate 衡量至少命中一部的用户占比。
+Precision@5/10、Recall@5/10、NDCG@5/10 三类指标。
+Precision = 命中数 / K，Recall = 命中数 / 可评估高分目标数；NDCG 衡量命中位置并按理想排序归一化。
 未评分推荐不计为离线命中，但其真实偏好未知，因此 1 − Precision 不能解释为实际不喜欢比例。
 新增 Precision 保留原有的验证 NDCG@10 选参规则，避免根据测试反馈改变选择标准。
 Top-5/10 是本项目的实验设置，课程硬性要求为推荐至少 5 部未评分电影。
@@ -184,7 +194,6 @@ Top-5/10 是本项目的实验设置，课程硬性要求为推荐至少 5 部�
 - `itemcf_integrity_checks.csv`：具体检查的违规数量，非零时审计报错。
 - `itemcf_recommendation_status.csv`：留出期高分、低于阈值及无评分记录的推荐数量和比例。
 - `itemcf_evaluation_scope.csv`：候选规模、可观察正例数、零分推荐及训练热度等描述性统计。
-- `itemcf_hit_distribution.csv`：Top-5/10 命中数量分布。
 - `itemcf_validation_reference.csv`：相同验证协议下的训练热门排序诊断参照与 ItemCF 结果。
 
 诊断参照不占用三种项目算法的选型名额，也不用于测试调参。审计通过能排除所列具体
@@ -201,73 +210,25 @@ Top-5/10 是本项目的实验设置，课程硬性要求为推荐至少 5 部�
 
 ## LightFM
 
-默认使用官方 `lightfm==1.17` 的 **logistic 损失**，避免本机 Windows WARP/BPR 负采样扩展的崩溃。
-训练标签只根据训练评分构造：**≥4 分为 +1、1–2 分为 -1，3 分和未评分项不参与训练**。
-不采样未评分项作为负例，不读取留出标签；评估正例仍按原规则定义为评分 ≥4。
-LightFM 默认同时使用身份 embedding 和属性特征。用户属性为性别、年龄段、职业（30 类），以及历史高分电影的类型分布（18 维）和年代分布（10 维），共 58 个属性特征。
-电影输入为类型（18 类）、上映年代（10 类），以及训练历史热度、平滑平均评分和平滑高分比例，共 31 个特征。
-年代从标题末尾年份提取；热度采用缩放后的 `log(1+评分次数)`，口碑以 20 条历史总体均值/高分比例的先验观测平滑。
-类别与数值特征都参与向量的加权组合；用户三个属性块分别归一化后拼接，用户/电影属性再按行 L1 归一化。
-在归一化属性矩阵左侧拼接训练 ID 的 one-hot，并再次归一化，使身份和属性两部分各占 0.5 权重。
-当前用户侧为 6,040 个 ID＋58 个属性，电影侧为 3,667 个 ID＋31 个属性；词表仅来自训练用户与训练目录。
-拼接的是稀疏特征列，每列学习一个向量，LightFM 对向量加权求和，最终表示维度仍由 `--components` 决定。
-MovieLens 1M 没有电影时长和剧情文本，本实现使用现有属性及历史评分派生的信息。
-
-为避免目标评分参与自身统计，训练集内部按用户时间戳组约 50%/50% 划分：前段构造特征，后段用于参数学习；同时间戳不跨段，只有一个时间戳组的用户仅提供特征历史。
-验证和测试时用完整训练集重建特征，再由已训练的特征向量组合得到用户/电影表示；不使用验证或测试评分构造统计，也不更新模型参数。
-该方案按用户保持先后关系，沿用项目现有的非全局日历划分。与此前属性版本的对比同时涉及特征和参数拟合样本数量的变化。
+当前默认采用 **仅用户/电影 ID 特征**、32 维 embedding、logistic 损失、正则化 1e-6、学习率 0.05、种子 42。
+评分 ≥4 为 +1，1–2 分为 -1，3 分及未评分项不参与拟合。为保持固定拟合样本口径，沿用训练内部时间划分后半段的标签：225,771 个正标签、66,930 个负标签；不使用属性或历史统计特征。
+比较 5/10 轮，按验证 NDCG@10 选择第 10 轮。用户表示在测试时固定，验证历史用于候选过滤。
 
 ```bash
-python train.py --model lightfm --loss logistic
+python train.py --model lightfm
 python recommend.py --model lightfm --user-id 1 --top-k 5
 ```
 
-`--no-identity-features` 可运行不含 ID 的属性版本。比较 ID 效果时应保持内部历史划分、拟合标签、损失及参数网格不变。
-`lightfm_feature_comparison.csv` 记录前后两次完成实验的指标，需结合两次运行配置判断是否为受控对比。
+`--feature-set id_static` 可显式使用 ID＋静态属性，`--feature-set id_history` 使用 ID＋历史统计属性；
+`--no-identity-features` 保留属性版本入口。不同特征方案属于同一种算法，当前默认与已采用权重为 `id_only`。
+可用 `--components`、`--epochs`、`--alpha` 指定验证网格。参数选择后才评估测试；只有记录了训练/验证 loss 的实验才生成相应诊断曲线。
 
-默认比较维度 `[32, 64]`、正则化 `[1e-6, 1e-4]`、训练轮数检查点 `[10, 20]`，共 8 个验证配置。
-固定随机种子 42、单线程，继续使用验证 NDCG@10 选参，选定后评估测试集；不使用测试结果调参。
-可用 `--components 32 --epochs 5 10 --alpha 1e-6 --seed 42` 缩小为 2 个验证配置，先确认完整流程。
-当前已完成的 LightFM 结果来自 32 维、5/10 轮的小网格，按验证 NDCG@10 选择第 5 轮。
-可选容量实验固定其他配置，比较 32、64、128 维各 10 轮，共 30 个验证检查点：
+结果保存到 `outputs/tables/lightfm_metrics.csv`、`lightfm_validation_search.csv`、`lightfm_run.json`、`lightfm_recommendation_examples.csv`。
+当前向量与逐用户指标在 `outputs/models/lightfm/`，该目录不纳入 Git。`representations.npz` 为实际推理表示；当前 ID-only 模式下，`feature_embeddings.npz` 与 ID 参数逐行对应。
 
-```bash
-python train.py --model lightfm --loss logistic --components 32 64 128 --epochs 1 2 3 4 5 6 7 8 9 10 --alpha 1e-6 --seed 42
-```
+默认 logistic 避开当前 Windows LightFM WARP/BPR 采样扩展的兼容性问题。可选 WARP 前应验证后端；已有 `repair_lightfm_windows.py` 可配合 Microsoft C++ Build Tools 修复随机数转换并隔离测试。
 
-每个检查点记录训练与验证交叉熵、正负类各自的 loss 和标签数量，以及验证排名指标。交叉熵只包含已观察的 ±1 标签，不含 L2 惩罚。
-训练 loss 使用前半历史特征及后半拟合标签；验证 loss 使用完整训练集构造的特征，以及共同评估用户的已知暖启动验证评分。
-因此两组 loss 的特征历史与正负类比例不同，不能仅凭二者绝对差值判定过拟合；应结合随轮数/维度变化的趋势与排名指标。
-检查点仍按验证 NDCG@10 选择，测试集仅评估最终选中模型。`lightfm_capacity_summary.csv` 汇总各维度的最佳验证检查点，
-对应推理权重位于 `outputs/models/lightfm/capacity/<维度>/`；完整曲线数据在 `lightfm_validation_search.csv`。
-Notebook 导出 `outputs/figures/lightfm_capacity_curves.png`，展示训练 loss、验证 loss 和验证 NDCG@10。
-旧实验没有记录 loss 时，Notebook 仍展示已有参数和验证搜索表，并提示补做容量实验。
-每个检查点的指标即时写入
-`lightfm_search_progress.csv`，当前最佳向量另存到 `outputs/models/lightfm/search_best/`，以保留中断前的进展。
-此前未完成的容量实验进度已单独归档至 `outputs/experiments/lightfm_capacity_partial.csv`；
-该文件不代表已选定模型，不参与最终测试指标比较。
-
-候选、评估用户及指标与 ItemCF 完全复用。LightFM 的参数及统计特征只来自训练集，测试时验证历史用于过滤已评分电影，不更新用户向量。
-打开 `notebooks/03_lightfm.ipynb` 查看选定配置、算法指标比较，并修改用户 ID 比较两种算法推荐的电影标题与类型。
-
-结果位于 `outputs/tables/lightfm_metrics.csv`、`lightfm_validation_search.csv`、`lightfm_run.json`、
-`lightfm_recommendation_examples.csv` 和 `comparison_metrics.csv`。
-选定模型的向量及逐用户测试结果保存到 `outputs/models/lightfm/`（不纳入 Git）。导出的向量用于推理，不包含继续训练所需的优化器状态。
-`feature_embeddings.npz` 保存实际学习的属性 embedding 与偏置，特征列名在 `lightfm_run.json` 中。
-`representations.npz` 保存组合后的用户/电影表示，以便推荐时直接查表；`feature_embeddings.npz` 则分别保留身份与属性的实际参数行。
-`lightfm_feature_comparison.csv` 对比同一数据下此前完成的实验和本次实验，记录维度、轮数及拟合标签数；当前最佳权重仍由验证集选择。
-
-当前三种算法的指标、推荐示例及合理性分析见 [结果分析报告](outputs/recommendation_analysis.md)。
-前三位示例用户的三算法 Top-10 合并结果见 [推荐对照表](outputs/tables/three_model_recommendation_comparison.csv)。
-
-可选 `--loss warp` 使用正反馈与内部负采样训练。当前 Windows 包存在可能导致负电影索引的随机数转换代码，
-WARP 入口检测到时会拒绝运行；logistic 不调用该采样函数，无需重编译。
-若需要在本机使用 WARP，可安装 [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
-中的“使用 C++ 的桌面开发”，再执行 `python repair_lightfm_windows.py`。
-该脚本只修正随机数转换，隔离测试通过后才备份并替换原扩展；这条重编译路径尚未在本机验证。
-
-算法参考：Maciej Kula. 2015. [Metadata Embeddings for User and Item Cold-start Recommendations](https://arxiv.org/abs/1507.08439)。
-实现依据：[官方 LightFM 文档](https://making.lyst.com/lightfm/docs/lightfm.html)。
+算法参考：[LightFM 官方文档](https://making.lyst.com/lightfm/docs/lightfm.html)。
 
 ## LRURec（WSDM 2024）
 
@@ -282,10 +243,10 @@ python recommend.py --model lrurec --user-id 1 --top-k 5
 LRURec 将按时间排列的高分电影 token 输入嵌入层，通过复数对角线性递推、残差前馈层和共享电影嵌入计算推荐分数。
 仅使用训练集生成“历史 → 下一部高分电影”的标签，采用完整训练目录的交叉熵；补齐 token 不参与分类。
 同一时间戳内仍按电影 ID 确定性排列，但相邻同时间戳的预测标签被忽略，避免把这种排列当作真实先后。
-输入切为最长 50 的不重叠片段，每个相邻转移最多作为标签一次；推理取最近 50 部已知高分电影。
+输入切为最长 50 的不重叠片段，每个相邻转移最多作为标签一次；当前推理取最近 100 部已知高分电影。
 
 默认小配置为隐藏维度 32、两层、dropout 0.2、batch size 64、AdamW（学习率 0.001，weight decay 0.01）、
-随机种子 42、CPU 两线程。默认在第 1、3 轮检查验证 loss，保存交叉熵最低的模型，选定后才评估测试集。
+随机种子 42、CPU 两线程。默认检查至第 50 轮并按验证 loss 选择权重；当前采用第 50 轮，训练窗口 50、推理窗口 100。推理窗口由固定权重下的验证 NDCG@10 选择。
 可先运行 `python train.py --model lrurec --lru-epochs 1` 检查完整流程；
 可用以下命令比较第 1–20 轮；不根据测试分数调整轮数。
 
@@ -294,10 +255,11 @@ python train.py --model lrurec --max-epochs 20
 ```
 
 验证 loss 与训练一样采用下一部电影的完整目录交叉熵，按有效目标数加权平均。
-修改 `--max-epochs` 可增加从头训练的轮数，并在每一轮验证；也可用 `--lru-epochs` 仅指定若干检查点，两者互斥。
+`--max-length` 控制训练窗口，`--inference-length` 控制推理窗口。修改 `--max-epochs` 可增加从头训练的轮数，并在每一轮验证；也可用 `--lru-epochs` 仅指定若干检查点，两者互斥。
 只统计共同评估用户的验证期高分电影，忽略冷启动及相邻同时间戳目标；每个窗口为此前历史预留约半数位置。
 逐步预测时允许使用训练历史和更早的验证期高分电影，验证标签不参与反向传播，测试数据不参与选模。
-每个检查点的 `train_loss`、`validation_loss` 和排名指标写入 `lrurec_validation_search.csv`，当前最低 loss 的权重即时保存。
+从头训练时，每个检查点的 `train_loss`、`validation_loss` 和排名指标写入 `lrurec_validation_search.csv`，最低 loss 的权重即时保存。
+当前采用配置的窗口搜索另存于 `lrurec_context_search.csv`；完整历史训练曲线保留在实验归档。
 保存的是推理权重，不含继续训练的优化器状态；验证 loss 相同时保留较早轮数。
 
 验证与测试沿用共同用户、完整未评分候选和 Precision/Recall/NDCG@5/10；测试历史可包含验证期已知评分，

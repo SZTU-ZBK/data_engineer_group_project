@@ -14,13 +14,17 @@ from scipy.sparse import load_npz
 from src.data import PROJECT_ROOT
 from src.evaluate import evaluate_ranking, write_comparison
 from src.models.item_cf import ItemCF
+from src.itemcf_history import add_context_weights, decay_histories, decay_scorer
 from src.recommend import file_sha256, load_movie_metadata, recommendation_table
 
 
-def run_itemcf(processed_dir, output_dir, neighbors, shrinkages):
+def run_itemcf(processed_dir, output_dir, neighbors, shrinkages, half_life_days=90):
     processed_dir, output_dir = processed_dir.resolve(), output_dir.resolve()
     required = ["config.json", "movie_mapping.csv", "positive_interactions.npz",
                 "validation_contexts.jsonl", "test_contexts.jsonl"]
+    half_life_days = half_life_days or None
+    if half_life_days is not None:
+        required += ["train.csv", "validation.csv"]
     missing = [name for name in required if not (processed_dir / name).is_file()]
     if missing:
         raise FileNotFoundError(f"Run 01_data_analysis.ipynb first; missing preprocessed inputs: {missing}")
@@ -35,15 +39,19 @@ def run_itemcf(processed_dir, output_dir, neighbors, shrinkages):
             or not np.all(np.diff(movie_ids) > 0)):
         raise ValueError("Expected contiguous indexes and ascending raw movie IDs matching matrix columns.")
     validation = pd.read_json(processed_dir / "validation_contexts.jsonl", lines=True)
+    train_history = pd.read_csv(processed_dir / "train.csv") if half_life_days else None
+    movie_map = dict(zip(mapping.movie_id, mapping.movie_index))
+    validation_weights = decay_histories(train_history, movie_map, half_life_days) if half_life_days else None
     grid = sorted(set(itertools.product(neighbors, shrinkages)))
     if not grid:
         raise ValueError("The hyperparameter grid must not be empty.")
     trials, best_model, best_validation, best_key = [], None, None, None
     start = perf_counter()
     for n_neighbors, shrinkage in grid:
-        model = ItemCF(n_neighbors=n_neighbors, shrinkage=shrinkage).fit(interactions)
+        model = ItemCF(n_neighbors=n_neighbors, shrinkage=shrinkage, half_life_days=half_life_days).fit(interactions)
         evaluation_start = perf_counter()
-        metrics, _ = evaluate_ranking(model.score_tokens, validation, movie_ids)
+        score_fn = decay_scorer(model, validation_weights) if validation_weights is not None else model.score_tokens
+        metrics, _ = evaluate_ranking(score_fn, validation, movie_ids)
         trial = {"n_neighbors": n_neighbors, "shrinkage": shrinkage,
                  "fit_seconds": model.fit_seconds_, "validation_seconds": perf_counter() - evaluation_start,
                  **metrics}
@@ -59,7 +67,10 @@ def run_itemcf(processed_dir, output_dir, neighbors, shrinkages):
     print(f'Selected neighbors={best_model.n_neighbors}, shrinkage={best_model.shrinkage:g}', flush=True)
     test = pd.read_json(processed_dir / "test_contexts.jsonl", lines=True)
     test_start = perf_counter()
-    test_metrics, test_per_user = evaluate_ranking(best_model.score_tokens, test, movie_ids)
+    test_weights = (decay_histories(pd.concat([train_history, pd.read_csv(processed_dir / "validation.csv")]),
+                                    movie_map, half_life_days) if half_life_days else None)
+    score_fn = decay_scorer(best_model, test_weights) if test_weights is not None else best_model.score_tokens
+    test_metrics, test_per_user = evaluate_ranking(score_fn, test, movie_ids)
     test_seconds = perf_counter() - test_start
 
     table_dir, model_dir = output_dir / "tables", output_dir / "models" / "itemcf"
@@ -68,6 +79,7 @@ def run_itemcf(processed_dir, output_dir, neighbors, shrinkages):
     best_model.save(model_dir)
     test_per_user.to_csv(model_dir / "test_per_user.csv", index=False)
     search = pd.DataFrame(trials)
+    search["half_life_days"] = half_life_days or 0
     search["selected"] = (search["n_neighbors"].eq(best_model.n_neighbors)
                            & search["shrinkage"].eq(best_model.shrinkage))
     search.to_csv(table_dir / "itemcf_validation_search.csv", index=False)
@@ -81,6 +93,8 @@ def run_itemcf(processed_dir, output_dir, neighbors, shrinkages):
     movies = load_movie_metadata()
     examples = []
     for context in test.loc[test["eligible"]].sort_values("user_id").head(3).to_dict("records"):
+        if test_weights is not None:
+            context = add_context_weights(context, test_weights)
         example = recommendation_table(best_model, context, movie_ids, movies, k=10)
         example.insert(0, "user_id", int(context["user_id"]))
         example["relevant_in_test"] = example["movie_id"].isin(context["relevant_movie_ids"])
@@ -90,19 +104,18 @@ def run_itemcf(processed_dir, output_dir, neighbors, shrinkages):
     run = {
         "algorithm": "positive_feedback_itemcf", "input": "binary rating >= relevance_threshold",
         "selection_metric": "NDCG@10 on validation", "tie_break": "Recall@10, then smaller neighbors/shrinkage",
-        "selected_parameters": {"n_neighbors": best_model.n_neighbors, "shrinkage": best_model.shrinkage},
+        "selected_parameters": {"n_neighbors": best_model.n_neighbors, "shrinkage": best_model.shrinkage,
+                                "half_life_days": half_life_days},
         "grid": {"n_neighbors": sorted(set(neighbors)), "shrinkage": sorted(set(shrinkages))},
         "similarity": "cosine * cooccurrence/(cooccurrence+shrinkage); diagonal=0; top neighbors per source item",
-        "scoring": "sum of retained similarities from known positive history; scores are not star predictions",
+        "scoring": "sum of retained similarities weighted by 2**(-history_age_days/half_life_days); no decay if half-life is null",
         "score_tie_break": "ascending raw movie ID; zero-support candidates remain eligible with score zero",
         "candidate_protocol": "full unseen training catalog, shared preprocessing cohorts; no sampled negatives",
         "validation_history": preprocessing["validation_history"], "test_history": preprocessing["test_history"],
         "model_fit_partitions": ["train"], "refit_on_validation": False,
         "k_values": [5, 10], "metric_aggregation": "macro-average over eligible users; warm relevant targets",
         "precision_definition": "hits / k; unrated recommendations are non-hits, not confirmed dislikes",
-        "mean_hits_definition": "average number of held-out relevant movies in each top-k list",
-        "hit_rate_definition": "fraction of eligible users with at least one hit in the top-k list",
-        "catalog_coverage_denominator": len(movie_ids), "random_seed": None,
+        "random_seed": None,
         "early_stopping": "not applicable: closed-form neighbor fitting",
         "fit_seconds_selected_trial": best_model.fit_seconds_, "test_evaluation_seconds": test_seconds,
         "total_seconds": perf_counter() - start,
@@ -123,20 +136,23 @@ def run_itemcf(processed_dir, output_dir, neighbors, shrinkages):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", choices=["itemcf", "lightfm", "lrurec"], default="itemcf")
-    parser.add_argument("--neighbors", nargs="+", type=int, default=[20, 50, 100])
-    parser.add_argument("--shrinkage", nargs="+", type=float, default=[0.0, 10.0, 50.0])
-    parser.add_argument("--components", nargs="+", type=int, default=[32, 64])
-    parser.add_argument("--epochs", nargs="+", type=int, default=[10, 20], help="LightFM epoch checkpoints")
-    parser.add_argument("--alpha", nargs="+", type=float, default=[1e-6, 1e-4])
+    parser.add_argument("--neighbors", nargs="+", type=int, default=[50])
+    parser.add_argument("--shrinkage", nargs="+", type=float, default=[0.0])
+    parser.add_argument("--half-life-days", type=float, default=90, help="ItemCF positive-history half-life; 0 disables decay")
+    parser.add_argument("--components", nargs="+", type=int, default=[32])
+    parser.add_argument("--epochs", nargs="+", type=int, default=[5, 10], help="LightFM epoch checkpoints")
+    parser.add_argument("--alpha", nargs="+", type=float, default=[1e-6])
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--loss", choices=["logistic", "warp"], default="logistic")
     parser.add_argument("--no-identity-features", action="store_true",
                         help="LightFM: disable user/movie ID features for a content-only comparison")
+    parser.add_argument("--feature-set", choices=["id_only", "id_static", "id_history"], default="id_only")
     lru_schedule = parser.add_mutually_exclusive_group()
-    lru_schedule.add_argument("--lru-epochs", nargs="+", type=int, default=[1, 3], help="LRURec epoch checkpoints")
+    lru_schedule.add_argument("--lru-epochs", nargs="+", type=int, default=[1, 3, 5, 10, 20, 30, 40, 50], help="LRURec epoch checkpoints")
     lru_schedule.add_argument("--max-epochs", type=int, help="LRURec: train this many epochs and validate every epoch")
     parser.add_argument("--hidden-size", type=int, default=32)
     parser.add_argument("--max-length", type=int, default=50)
+    parser.add_argument("--inference-length", type=int, default=100, help="LRURec history length used after epoch selection")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--num-blocks", type=int, default=2)
     parser.add_argument("--learning-rate", type=float, default=0.001)
@@ -162,13 +178,15 @@ def main():
                    hidden_size=args.hidden_size, max_length=args.max_length,
                    batch_size=args.batch_size, num_blocks=args.num_blocks,
                    learning_rate=args.learning_rate, weight_decay=args.weight_decay,
-                   dropout=args.dropout, seed=args.seed, device=args.device, num_threads=args.num_threads)
+                   dropout=args.dropout, seed=args.seed, device=args.device, num_threads=args.num_threads,
+                   inference_length=args.inference_length)
     elif args.model == "lightfm":
         from src.train_lightfm import run_lightfm
         run_lightfm(args.processed_dir, args.output_dir, args.components, args.epochs,
-                    args.alpha, args.seed, loss=args.loss, identity_features=not args.no_identity_features)
+                    args.alpha, args.seed, loss=args.loss, identity_features=not args.no_identity_features,
+                    feature_set=args.feature_set)
     else:
-        run_itemcf(args.processed_dir, args.output_dir, args.neighbors, args.shrinkage)
+        run_itemcf(args.processed_dir, args.output_dir, args.neighbors, args.shrinkage, args.half_life_days)
 
 
 if __name__ == "__main__":

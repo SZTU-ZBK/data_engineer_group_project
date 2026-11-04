@@ -1,0 +1,4 @@
+﻿input,rows,columns,nonzero_values
+explicit_ratings,6040,3667,799086
+positive_interactions,6040,3667,470016
+genre_features,3667,18,6145
